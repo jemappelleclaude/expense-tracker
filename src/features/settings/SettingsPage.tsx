@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  Plus, Download, Moon, Sun, Trash2, RefreshCw, ChevronRight, Repeat,
+  Plus, Download, Moon, Sun, Trash2, RefreshCw, ChevronRight, Repeat, Banknote,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { db, type Category, type RecurringRule, seedDatabase } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { useTheme } from '@/lib/theme'
 import CategorySheet from './CategorySheet'
@@ -149,6 +150,35 @@ export default function SettingsPage() {
   const recurringRules = useLiveQuery(() => db.recurringRules.toArray(), [])
   const accounts      = useLiveQuery(() => db.accounts.toArray(), [])
 
+  // ── Salary settings ──────────────────────────────────────────────────────────
+  const savedSalary = useLiveQuery(() => db.userSettings.get('monthlySalary'), [])
+  const savedHours  = useLiveQuery(() => db.userSettings.get('weeklyHours'),  [])
+  const [salary, setSalary] = useState('')
+  const [hours,  setHours]  = useState('40')
+  const [salaryDirty, setSalaryDirty] = useState(false)
+  const [salarySaved, setSalarySaved] = useState(false)
+
+  // Sync local state from DB on first load (when not dirty)
+  useMemo(() => {
+    if (!salaryDirty) {
+      if (savedSalary?.value !== undefined) setSalary(String(savedSalary.value))
+      if (savedHours?.value  !== undefined) setHours(String(savedHours.value))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedSalary, savedHours])
+
+  const parsedSalary = parseFloat(salary) || 0
+  const parsedHours  = parseFloat(hours)  || 40
+  const hourlyRate   = parsedSalary > 0 ? (parsedSalary * 12) / (parsedHours * 52) : 0
+
+  async function saveSalarySettings() {
+    await db.userSettings.put({ key: 'monthlySalary', value: parsedSalary })
+    await db.userSettings.put({ key: 'weeklyHours',   value: parsedHours  })
+    setSalaryDirty(false)
+    setSalarySaved(true)
+    setTimeout(() => setSalarySaved(false), 2000)
+  }
+
   const [catSheetOpen,   setCatSheetOpen]   = useState(false)
   const [editingCat,     setEditingCat]     = useState<Category | undefined>(undefined)
   const [catDefaultType, setCatDefaultType] = useState<'expense' | 'income'>('expense')
@@ -283,6 +313,63 @@ export default function SettingsPage() {
             <Plus className="h-4 w-4" />
             <span className="text-sm font-medium">Add Income Category</span>
           </button>
+        </div>
+
+        {/* ── Salary & Work Hours ──────────────────────── */}
+        <div className="px-4 pt-5 pb-1">
+          <SectionHeader title="Salary & Work Hours" />
+        </div>
+
+        <div className="bg-card border-y px-4 py-4 flex flex-col gap-4">
+          <p className="text-xs text-muted-foreground">
+            Used by "Worth It?" to calculate how many hours of work a purchase costs.
+          </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-muted-foreground w-32 flex-shrink-0">Monthly salary</label>
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  value={salary}
+                  onChange={e => { setSalary(e.target.value); setSalaryDirty(true) }}
+                  placeholder="50000"
+                  className="pl-7"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-muted-foreground w-32 flex-shrink-0">Weekly hours</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                value={hours}
+                onChange={e => { setHours(e.target.value); setSalaryDirty(true) }}
+                placeholder="40"
+                className="flex-1"
+              />
+            </div>
+          </div>
+
+          {hourlyRate > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-muted/50">
+              <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <p className="text-sm">
+                Your hourly rate:{' '}
+                <span className="font-semibold text-foreground">{formatCurrency(Math.round(hourlyRate))}/hr</span>
+              </p>
+            </div>
+          )}
+
+          <Button
+            onClick={saveSalarySettings}
+            disabled={parsedSalary <= 0}
+            variant={salarySaved ? 'outline' : 'default'}
+            className={cn('w-full', salarySaved && 'text-green-500 border-green-500/40')}
+          >
+            {salarySaved ? '✓ Saved' : 'Save'}
+          </Button>
         </div>
 
         {/* ── Recurring Transactions ────────────────── */}

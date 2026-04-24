@@ -25,10 +25,17 @@ function toInputDate(d: Date | string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+interface Prefill {
+  amount?: number
+  categoryId?: number
+  note?: string
+}
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   transaction?: Transaction  // undefined = add mode, defined = edit mode
+  prefill?: Prefill
 }
 
 const TYPE_STYLES: Record<TransactionType, { active: string; amount: string }> = {
@@ -37,7 +44,7 @@ const TYPE_STYLES: Record<TransactionType, { active: string; amount: string }> =
   transfer: { active: 'bg-blue-500/15 text-blue-400',   amount: 'text-blue-400'  },
 }
 
-export default function AddTransactionSheet({ open, onOpenChange, transaction }: Props) {
+export default function AddTransactionSheet({ open, onOpenChange, transaction, prefill }: Props) {
   const isEditMode = !!transaction
 
   const [type,        setType]        = useState<TransactionType>('expense')
@@ -72,13 +79,15 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction }:
       setNote(transaction.note)
     } else {
       setType('expense')
-      setAmount('')
-      setCategoryId(null)
+      setAmount(prefill?.amount?.toString() ?? '')
+      setCategoryId(prefill?.categoryId ?? null)
       setToAccountId(null)
       setDate(todayString())
-      setNote('')
+      setNote(prefill?.note ?? '')
       // accountId not reset — keeps last-used account for convenience
     }
+  // prefill is intentionally excluded — only apply on open, not on every render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, transaction?.id])
 
   // Default account for add mode when accountId is unset

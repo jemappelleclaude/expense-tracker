@@ -48,6 +48,22 @@ export interface Budget {
   month: string // "YYYY-MM"
 }
 
+export interface UserSetting {
+  key: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any
+}
+
+export interface PendingPurchase {
+  id?: number
+  name: string
+  price: number
+  workHours: number
+  createdAt: Date
+  decideBefore: Date
+  status: 'pending' | 'bought' | 'skipped'
+}
+
 export interface RecurringRule {
   id?: number
   transactionTemplate: {
@@ -69,6 +85,8 @@ export class ExpenseTrackerDB extends Dexie {
   accounts!: Table<Account>
   budgets!: Table<Budget>
   recurringRules!: Table<RecurringRule>
+  userSettings!: Table<UserSetting>
+  pendingPurchases!: Table<PendingPurchase>
 
   constructor() {
     super('ExpenseTrackerDB')
@@ -116,6 +134,16 @@ export class ExpenseTrackerDB extends Dexie {
         if (acc.openingBalance === undefined) acc.openingBalance = acc.balance ?? 0
       })
     )
+    // v6: adds userSettings (key-value) and pendingPurchases tables
+    this.version(6).stores({
+      transactions:     '++id, type, categoryId, accountId, toAccountId, date, isRecurring, recurringRuleId, createdAt',
+      categories:       '++id, name, type, isDefault',
+      accounts:         '++id, name, type, isDefault',
+      budgets:          '++id, categoryId, month',
+      recurringRules:   '++id, frequency, nextDate, endDate',
+      userSettings:     'key',
+      pendingPurchases: '++id, status, createdAt',
+    })
   }
 }
 

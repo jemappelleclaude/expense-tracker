@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, ReceiptText } from 'lucide-react'
+import { Plus, ReceiptText, Scale, X as XIcon } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { MonthSelector } from '@/components/MonthSelector'
 import { db, type Transaction } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import AddTransactionSheet from './AddTransactionSheet'
+import WorthItSheet from '@/features/worthit/WorthItSheet'
 
 function getDateLabel(date: Date): string {
   if (isToday(date)) return 'Today'
@@ -21,6 +22,11 @@ export default function TransactionsPage() {
 
   // undefined = sheet closed | null = add mode | Transaction = edit mode
   const [editingTx, setEditingTx] = useState<Transaction | null | undefined>(undefined)
+  const [worthItOpen,  setWorthItOpen]  = useState(false)
+  const [txPrefill,    setTxPrefill]    = useState<{ amount?: number; categoryId?: number; note?: string } | undefined>()
+  const [fabExpanded,  setFabExpanded]  = useState(false)
+  const pressTimer = useRef<ReturnType<typeof setTimeout>>()
+  const didLongPress = useRef(false)
 
   const transactions = useLiveQuery(
     () => {
@@ -74,8 +80,23 @@ export default function TransactionsPage() {
     return { totalIncome, totalExpense, balance: totalIncome - totalExpense, groups: Array.from(map.values()) }
   }, [transactions])
 
-  function handleSheetChange(open: boolean) {
-    if (!open) setEditingTx(undefined)
+  function onFabPointerDown() {
+    didLongPress.current = false
+    pressTimer.current = setTimeout(() => {
+      didLongPress.current = true
+      setFabExpanded(true)
+      if ('vibrate' in navigator) navigator.vibrate(40)
+    }, 500)
+  }
+  function onFabPointerUp() { clearTimeout(pressTimer.current) }
+  function onFabClick() {
+    if (didLongPress.current) { didLongPress.current = false; return }
+    setEditingTx(null)
+  }
+
+  function handleBuyIt(amount: number, note: string, categoryId?: number) {
+    setTxPrefill({ amount, note, categoryId })
+    setEditingTx(null)
   }
 
   const loaded = transactions !== undefined
@@ -196,18 +217,73 @@ export default function TransactionsPage() {
       </div>
 
       {/* ── FAB ───────────────────────────────────────── */}
-      <button
-        onClick={() => setEditingTx(null)}
-        aria-label="Add transaction"
-        className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-      >
-        <Plus className="h-6 w-6" strokeWidth={2.5} />
-      </button>
+      {fabExpanded && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-30" onClick={() => setFabExpanded(false)} />
+          {/* Speed dial */}
+          <div className="fixed bottom-[4.75rem] right-4 z-40 flex flex-col items-end gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold bg-popover text-popover-foreground px-3 py-1.5 rounded-full shadow-md border">
+                Worth It?
+              </span>
+              <button
+                onClick={() => { setFabExpanded(false); setWorthItOpen(true) }}
+                className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-md border flex items-center justify-center active:scale-95 transition-transform"
+                aria-label="Worth It?"
+              >
+                <Scale className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold bg-popover text-popover-foreground px-3 py-1.5 rounded-full shadow-md border">
+                Add Transaction
+              </span>
+              <button
+                onClick={() => { setFabExpanded(false); setEditingTx(null) }}
+                className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-md border flex items-center justify-center active:scale-95 transition-transform"
+                aria-label="Add transaction"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+            {/* Close FAB */}
+            <button
+              onClick={() => setFabExpanded(false)}
+              className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <XIcon className="h-6 w-6" />
+            </button>
+          </div>
+        </>
+      )}
+
+      {!fabExpanded && (
+        <button
+          onPointerDown={onFabPointerDown}
+          onPointerUp={onFabPointerUp}
+          onPointerLeave={onFabPointerUp}
+          onClick={onFabClick}
+          onContextMenu={e => e.preventDefault()}
+          aria-label="Add transaction (long press for more)"
+          style={{ touchAction: 'none' }}
+          className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        </button>
+      )}
 
       <AddTransactionSheet
         open={editingTx !== undefined}
-        onOpenChange={handleSheetChange}
+        onOpenChange={open => { if (!open) { setEditingTx(undefined); setTxPrefill(undefined) } }}
         transaction={editingTx ?? undefined}
+        prefill={txPrefill}
+      />
+
+      <WorthItSheet
+        open={worthItOpen}
+        onOpenChange={setWorthItOpen}
+        onBuyIt={handleBuyIt}
       />
     </>
   )

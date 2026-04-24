@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TrendingDown } from 'lucide-react'
+import { TrendingDown, PiggyBank } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { db } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
@@ -23,6 +23,18 @@ export default function DashboardPage() {
   )
 
   const categories = useLiveQuery(() => db.categories.toArray(), [])
+
+  const skippedThisMonth = useLiveQuery(
+    () => {
+      const start = new Date(year, month, 1)
+      const end   = new Date(year, month + 1, 0, 23, 59, 59, 999)
+      return db.pendingPurchases
+        .where('status').equals('skipped')
+        .and(p => new Date(p.createdAt) >= start && new Date(p.createdAt) <= end)
+        .toArray()
+    },
+    [year, month]
+  )
 
   const categoryMap = useMemo(
     () => Object.fromEntries((categories ?? []).map(c => [c.id!, c])),
@@ -94,6 +106,25 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* ── Skipped savings card ──────────────────────────────── */}
+        {(skippedThisMonth?.length ?? 0) > 0 && (() => {
+          const saved = skippedThisMonth!.reduce((s, p) => s + p.price, 0)
+          const count = skippedThisMonth!.length
+          return (
+            <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
+              <PiggyBank className="h-5 w-5 text-green-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-green-500">
+                  Saved {formatCurrency(saved)} this month
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  by skipping {count} impulse purchase{count !== 1 ? 's' : ''} — nice!
+                </p>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* ── Spending pie ──────────────────────── */}
         <Card>
