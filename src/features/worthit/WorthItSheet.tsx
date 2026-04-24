@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, ChevronLeft, Clock, ShoppingCart, AlertCircle, Sparkles } from 'lucide-react'
+import { X, Clock, ShoppingCart, AlertCircle, Sparkles } from 'lucide-react'
 import { formatDistanceToNow, addHours, addDays } from 'date-fns'
 import { db, type PendingPurchase } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
@@ -264,33 +264,37 @@ export default function WorthItSheet({ open, onOpenChange, onBuyIt }: Props) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-h-[96dvh]">
 
-        {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3">
-          {view === 'pending' ? (
-            <button onClick={() => setView('evaluate')} className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors">
-              <ChevronLeft className="h-5 w-5" />
+        {/* Header — tab bar + close */}
+        <div className="flex-shrink-0 flex items-center gap-2 px-3 py-2 border-b">
+          <div className="flex flex-1 rounded-xl bg-muted p-1 gap-1">
+            <button
+              onClick={() => setView('evaluate')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors',
+                view === 'evaluate'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Calculator
             </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <h2 className="font-semibold text-base">Worth It?</h2>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            {view === 'evaluate' && (pending?.length ?? 0) > 0 && (
-              <button
-                onClick={() => setView('pending')}
-                className="flex items-center gap-1.5 text-xs text-primary font-medium px-2 py-1.5 rounded-lg hover:bg-primary/10 transition-colors"
-              >
-                <Clock className="h-3.5 w-3.5" />
-                {pending!.length} pending
-              </button>
-            )}
-            <SheetClose className="rounded-full p-1.5 hover:bg-accent text-muted-foreground transition-colors">
-              <X className="h-4 w-4" /><span className="sr-only">Close</span>
-            </SheetClose>
+            <button
+              onClick={() => setView('pending')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors',
+                view === 'pending'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              Pending{(pending?.length ?? 0) > 0 ? ` (${pending!.length})` : ''}
+            </button>
           </div>
+          <SheetClose className="flex-shrink-0 rounded-full p-1.5 hover:bg-accent text-muted-foreground transition-colors">
+            <X className="h-4 w-4" /><span className="sr-only">Close</span>
+          </SheetClose>
         </div>
 
         {/* ── Pending list view ──────────────────────────────────────── */}

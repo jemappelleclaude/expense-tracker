@@ -1,13 +1,12 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, ReceiptText, Scale, X as XIcon } from 'lucide-react'
+import { ReceiptText } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { MonthSelector } from '@/components/MonthSelector'
 import { db, type Transaction } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import AddTransactionSheet from './AddTransactionSheet'
-import WorthItSheet from '@/features/worthit/WorthItSheet'
 
 function getDateLabel(date: Date): string {
   if (isToday(date)) return 'Today'
@@ -18,15 +17,10 @@ function getDateLabel(date: Date): string {
 export default function TransactionsPage() {
   const now = new Date()
   const [year, setYear]   = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth()) // 0-indexed
+  const [month, setMonth] = useState(now.getMonth())
 
-  // undefined = sheet closed | null = add mode | Transaction = edit mode
-  const [editingTx, setEditingTx] = useState<Transaction | null | undefined>(undefined)
-  const [worthItOpen,  setWorthItOpen]  = useState(false)
-  const [txPrefill,    setTxPrefill]    = useState<{ amount?: number; categoryId?: number; note?: string } | undefined>()
-  const [fabExpanded,  setFabExpanded]  = useState(false)
-  const pressTimer = useRef<ReturnType<typeof setTimeout>>()
-  const didLongPress = useRef(false)
+  // undefined = sheet closed, Transaction = edit mode
+  const [editingTx, setEditingTx] = useState<Transaction | undefined>(undefined)
 
   const transactions = useLiveQuery(
     () => {
@@ -53,7 +47,6 @@ export default function TransactionsPage() {
     const txs = transactions ?? []
     let totalIncome = 0, totalExpense = 0
 
-    // Sort: date desc, then createdAt desc
     const sorted = [...txs].sort((a, b) => {
       const d = new Date(b.date).getTime() - new Date(a.date).getTime()
       return d !== 0 ? d : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -79,25 +72,6 @@ export default function TransactionsPage() {
 
     return { totalIncome, totalExpense, balance: totalIncome - totalExpense, groups: Array.from(map.values()) }
   }, [transactions])
-
-  function onFabPointerDown() {
-    didLongPress.current = false
-    pressTimer.current = setTimeout(() => {
-      didLongPress.current = true
-      setFabExpanded(true)
-      if ('vibrate' in navigator) navigator.vibrate(40)
-    }, 500)
-  }
-  function onFabPointerUp() { clearTimeout(pressTimer.current) }
-  function onFabClick() {
-    if (didLongPress.current) { didLongPress.current = false; return }
-    setEditingTx(null)
-  }
-
-  function handleBuyIt(amount: number, note: string, categoryId?: number) {
-    setTxPrefill({ amount, note, categoryId })
-    setEditingTx(null)
-  }
 
   const loaded = transactions !== undefined
 
@@ -137,7 +111,6 @@ export default function TransactionsPage() {
       {/* ── Content ───────────────────────────────────── */}
       <div className="pb-28">
 
-        {/* Empty state */}
         {loaded && groups.length === 0 && (
           <div className="flex flex-col items-center gap-3 mt-20 text-muted-foreground select-none">
             <ReceiptText className="h-12 w-12 opacity-20" />
@@ -145,11 +118,9 @@ export default function TransactionsPage() {
           </div>
         )}
 
-        {/* Daily groups */}
         {groups.map(group => (
           <div key={group.dateKey}>
 
-            {/* Date header */}
             <div className="flex items-center justify-between px-4 py-1.5 bg-muted/40">
               <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
               <span className={cn(
@@ -160,7 +131,6 @@ export default function TransactionsPage() {
               </span>
             </div>
 
-            {/* Transaction rows */}
             {group.transactions.map((tx, i) => {
               const cat   = categoryMap[tx.categoryId]
               const acc   = accountMap[tx.accountId]
@@ -176,7 +146,6 @@ export default function TransactionsPage() {
                     i < group.transactions.length - 1 && 'border-b border-border/40'
                   )}
                 >
-                  {/* Category icon */}
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
                     style={{ backgroundColor: (cat?.color ?? '#6b7280') + '22' }}
@@ -184,7 +153,6 @@ export default function TransactionsPage() {
                     {tx.type === 'transfer' ? '↔️' : (cat?.icon ?? '💸')}
                   </div>
 
-                  {/* Name + note */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
                       {cat?.name ?? (tx.type === 'transfer' ? 'Transfer' : 'Transaction')}
@@ -194,7 +162,6 @@ export default function TransactionsPage() {
                     ) : null}
                   </div>
 
-                  {/* Amount + account */}
                   <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                     <span className={cn(
                       'text-sm font-semibold tabular-nums',
@@ -216,74 +183,11 @@ export default function TransactionsPage() {
         ))}
       </div>
 
-      {/* ── FAB ───────────────────────────────────────── */}
-      {fabExpanded && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-30" onClick={() => setFabExpanded(false)} />
-          {/* Speed dial */}
-          <div className="fixed bottom-[4.75rem] right-4 z-40 flex flex-col items-end gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold bg-popover text-popover-foreground px-3 py-1.5 rounded-full shadow-md border">
-                Worth It?
-              </span>
-              <button
-                onClick={() => { setFabExpanded(false); setWorthItOpen(true) }}
-                className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-md border flex items-center justify-center active:scale-95 transition-transform"
-                aria-label="Worth It?"
-              >
-                <Scale className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold bg-popover text-popover-foreground px-3 py-1.5 rounded-full shadow-md border">
-                Add Transaction
-              </span>
-              <button
-                onClick={() => { setFabExpanded(false); setEditingTx(null) }}
-                className="h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-md border flex items-center justify-center active:scale-95 transition-transform"
-                aria-label="Add transaction"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </div>
-            {/* Close FAB */}
-            <button
-              onClick={() => setFabExpanded(false)}
-              className="h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-            >
-              <XIcon className="h-6 w-6" />
-            </button>
-          </div>
-        </>
-      )}
-
-      {!fabExpanded && (
-        <button
-          onPointerDown={onFabPointerDown}
-          onPointerUp={onFabPointerUp}
-          onPointerLeave={onFabPointerUp}
-          onClick={onFabClick}
-          onContextMenu={e => e.preventDefault()}
-          aria-label="Add transaction (long press for more)"
-          style={{ touchAction: 'none' }}
-          className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-        >
-          <Plus className="h-6 w-6" strokeWidth={2.5} />
-        </button>
-      )}
-
+      {/* Edit-mode sheet (tap existing transaction) */}
       <AddTransactionSheet
         open={editingTx !== undefined}
-        onOpenChange={open => { if (!open) { setEditingTx(undefined); setTxPrefill(undefined) } }}
-        transaction={editingTx ?? undefined}
-        prefill={txPrefill}
-      />
-
-      <WorthItSheet
-        open={worthItOpen}
-        onOpenChange={setWorthItOpen}
-        onBuyIt={handleBuyIt}
+        onOpenChange={open => { if (!open) setEditingTx(undefined) }}
+        transaction={editingTx}
       />
     </>
   )

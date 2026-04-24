@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  Plus, Download, Moon, Sun, Trash2, RefreshCw, ChevronRight, Repeat, Banknote,
+  Plus, Download, Moon, Sun, Trash2, RefreshCw, ChevronRight, Repeat, Banknote, Wallet,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { db, type Category, type RecurringRule, seedDatabase } from '@/lib/db'
@@ -144,6 +145,7 @@ function RuleRow({
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
+  const navigate = useNavigate()
   const { dark, toggle: toggleDark } = useTheme()
 
   const categories    = useLiveQuery(() => db.categories.toArray(), [])
@@ -249,6 +251,19 @@ export default function SettingsPage() {
   return (
     <>
       <div className="flex flex-col pb-28">
+
+        {/* ── Accounts ──────────────────────────────── */}
+        <div className="px-4 pt-5 pb-1">
+          <SectionHeader title="Accounts" />
+        </div>
+
+        <div className="bg-card border-y">
+          <SettingRow
+            icon={<Wallet className="h-4 w-4" />}
+            label="Manage Accounts"
+            onClick={() => navigate('/accounts')}
+          />
+        </div>
 
         {/* ── Categories ───────────────────────────── */}
         <div className="px-4 pt-5 pb-1">

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, ChevronLeft } from 'lucide-react'
 import { db, type Account } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -9,6 +10,7 @@ import AccountTransactionsView from './AccountTransactionsView'
 import { computeBalance } from './AccountTransactionsView'
 
 export default function AccountsPage() {
+  const navigate = useNavigate()
   const accounts     = useLiveQuery(() => db.accounts.toArray(), [])
   const allTxs       = useLiveQuery(() => db.transactions.toArray(), [])
 
@@ -43,6 +45,18 @@ export default function AccountsPage() {
 
   return (
     <>
+      {/* Sticky header with back button */}
+      <div className="sticky top-0 z-10 bg-background border-b flex items-center gap-2 px-4 py-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+          aria-label="Go back"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <h1 className="font-semibold text-base">Accounts</h1>
+      </div>
+
       <div className="flex flex-col gap-4 p-4 pb-28">
 
         {/* Total balance card */}

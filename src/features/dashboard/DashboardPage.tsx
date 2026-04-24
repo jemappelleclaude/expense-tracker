@@ -1,17 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TrendingDown, PiggyBank } from 'lucide-react'
+import { TrendingDown, PiggyBank, Clock, ChevronRight } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { db } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MonthSelector } from '@/components/MonthSelector'
+import { useActions } from '@/lib/actions'
 
 export default function DashboardPage() {
   const now = new Date()
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
+
+  const { openWorthIt } = useActions()
 
   const transactions = useLiveQuery(
     () => {
@@ -34,6 +37,11 @@ export default function DashboardPage() {
         .toArray()
     },
     [year, month]
+  )
+
+  const pendingPurchases = useLiveQuery(
+    () => db.pendingPurchases.where('status').equals('pending').toArray(),
+    []
   )
 
   const categoryMap = useMemo(
@@ -106,25 +114,6 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
-
-        {/* ── Skipped savings card ──────────────────────────────── */}
-        {(skippedThisMonth?.length ?? 0) > 0 && (() => {
-          const saved = skippedThisMonth!.reduce((s, p) => s + p.price, 0)
-          const count = skippedThisMonth!.length
-          return (
-            <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
-              <PiggyBank className="h-5 w-5 text-green-500 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-green-500">
-                  Saved {formatCurrency(saved)} this month
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  by skipping {count} impulse purchase{count !== 1 ? 's' : ''} — nice!
-                </p>
-              </div>
-            </div>
-          )
-        })()}
 
         {/* ── Spending pie ──────────────────────── */}
         <Card>
@@ -217,6 +206,42 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* ── Skipped savings card ──────────────── */}
+        {(skippedThisMonth?.length ?? 0) > 0 && (() => {
+          const saved = skippedThisMonth!.reduce((s, p) => s + p.price, 0)
+          const count = skippedThisMonth!.length
+          return (
+            <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
+              <PiggyBank className="h-5 w-5 text-green-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-green-500">
+                  Saved {formatCurrency(saved)} this month
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  by skipping {count} impulse purchase{count !== 1 ? 's' : ''} — nice!
+                </p>
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* ── Thinking about a purchase? ────────── */}
+        {(pendingPurchases?.length ?? 0) > 0 && (
+          <button
+            onClick={openWorthIt}
+            className="flex items-center gap-3 rounded-xl bg-blue-500/10 border border-blue-500/20 px-4 py-3 w-full text-left active:bg-blue-500/15 transition-colors"
+          >
+            <Clock className="h-5 w-5 text-blue-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-400">
+                {pendingPurchases!.length} purchase{pendingPurchases!.length !== 1 ? 's' : ''} pending review
+              </p>
+              <p className="text-xs text-muted-foreground">Tap to revisit your Think About It list</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-blue-400/60 flex-shrink-0" />
+          </button>
+        )}
+
         {/* ── Top 5 spending ────────────────────── */}
         {categoryExpenses.length > 0 && (
           <Card>
@@ -228,10 +253,8 @@ export default function DashboardPage() {
             <CardContent className="pt-3 flex flex-col gap-4">
               {categoryExpenses.slice(0, 5).map(cat => (
                 <div key={cat.name} className="flex items-center gap-3">
-                  {/* Icon */}
                   <span className="text-xl w-7 text-center flex-shrink-0">{cat.icon}</span>
 
-                  {/* Name + bar + amount */}
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-1.5">
                       <span className="text-sm font-medium truncate">{cat.name}</span>
@@ -284,7 +307,6 @@ export default function DashboardPage() {
                 </div>
               ))}
 
-              {/* Net label */}
               <p className={cn(
                 'text-xs text-center',
                 balance > 0 ? 'text-green-500'
@@ -301,7 +323,6 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* ── Global empty state ────────────────── */}
         {loaded && !hasData && (
           <p className="text-center text-sm text-muted-foreground mt-4">
             No data for this month
