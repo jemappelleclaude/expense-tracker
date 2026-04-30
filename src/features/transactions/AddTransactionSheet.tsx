@@ -11,8 +11,6 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function todayString() {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -23,8 +21,6 @@ function toInputDate(d: Date | string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 interface Prefill {
   amount?: number
   categoryId?: number
@@ -34,14 +30,14 @@ interface Prefill {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  transaction?: Transaction  // undefined = add mode, defined = edit mode
+  transaction?: Transaction
   prefill?: Prefill
 }
 
-const TYPE_STYLES: Record<TransactionType, { active: string; amount: string }> = {
-  expense:  { active: 'bg-red-500/15 text-red-400',    amount: 'text-red-400'   },
-  income:   { active: 'bg-green-500/15 text-green-500', amount: 'text-green-500' },
-  transfer: { active: 'bg-blue-500/15 text-blue-400',   amount: 'text-blue-400'  },
+const TYPE_CONFIG: Record<TransactionType, { active: string; amount: string; label: string }> = {
+  expense:  { active: 'bg-red-500/20 text-red-400 border-red-500/30',      amount: 'text-red-400',    label: 'Expense'  },
+  income:   { active: 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30', amount: 'text-emerald-500', label: 'Income'   },
+  transfer: { active: 'bg-violet-500/20 text-violet-400 border-violet-500/30',   amount: 'text-violet-400', label: 'Transfer' },
 }
 
 export default function AddTransactionSheet({ open, onOpenChange, transaction, prefill }: Props) {
@@ -64,7 +60,6 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
     c.type === (type === 'transfer' ? 'expense' : type)
   ) ?? []
 
-  // ── Init / reset when sheet opens or switches between transactions ──────────
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!open) { setConfirmDelete(false); return }
@@ -84,30 +79,24 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
       setToAccountId(null)
       setDate(todayString())
       setNote(prefill?.note ?? '')
-      // accountId not reset — keeps last-used account for convenience
     }
-  // prefill is intentionally excluded — only apply on open, not on every render
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, transaction?.id])
 
-  // Default account for add mode when accountId is unset
   useEffect(() => {
     if (open && accountId === null && accounts?.length) {
       setAccountId((accounts.find(a => a.isDefault) ?? accounts[0]).id!)
     }
   }, [open, accountId, accounts])
 
-  // Clear toAccountId if it collides after accountId changes
   useEffect(() => {
     if (toAccountId !== null && toAccountId === accountId) setToAccountId(null)
   }, [accountId, toAccountId])
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
   function handleTypeChange(t: TransactionType) {
     if (t === type) return
     setType(t)
-    setCategoryId(null) // inline clear avoids race with init useEffect
+    setCategoryId(null)
   }
 
   function resetForm() {
@@ -127,8 +116,6 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
     (type === 'transfer'
       ? toAccountId !== null && toAccountId !== accountId
       : categoryId !== null)
-
-  // ── Save ────────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!isValid) return
@@ -174,8 +161,6 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
     }
   }
 
-  // ── Delete ──────────────────────────────────────────────────────────────────
-
   async function handleDelete() {
     if (!transaction) return
     setSaving(true)
@@ -190,15 +175,13 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
     }
   }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="max-h-[92dvh]">
 
         {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-3">
-          <h2 className="font-semibold text-base">
+          <h2 className="font-bold text-base">
             {isEditMode ? 'Edit Transaction' : 'Add Transaction'}
           </h2>
           <SheetClose className="rounded-full p-1.5 hover:bg-accent text-muted-foreground transition-colors">
@@ -210,25 +193,27 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-4 pb-2 flex flex-col gap-5">
 
-          {/* Type toggle */}
-          <div className="flex rounded-xl border p-1 gap-1">
+          {/* Type toggle — pill selectors */}
+          <div className="flex rounded-2xl bg-muted/60 p-1 gap-1">
             {(['expense', 'income', 'transfer'] as TransactionType[]).map(t => (
               <button
                 key={t}
                 onClick={() => handleTypeChange(t)}
                 className={cn(
-                  'flex-1 py-2 rounded-lg text-sm font-medium capitalize transition-colors',
-                  type === t ? TYPE_STYLES[t].active : 'text-muted-foreground hover:text-foreground'
+                  'flex-1 py-2.5 rounded-xl text-xs font-semibold capitalize transition-all border',
+                  type === t
+                    ? TYPE_CONFIG[t].active
+                    : 'text-muted-foreground hover:text-foreground border-transparent'
                 )}
               >
-                {t}
+                {TYPE_CONFIG[t].label}
               </button>
             ))}
           </div>
 
-          {/* Amount */}
-          <div className="flex items-center justify-center gap-1 py-3">
-            <span className={cn('text-4xl font-bold', TYPE_STYLES[type].amount)}>₹</span>
+          {/* Amount — large centered */}
+          <div className="flex items-center justify-center gap-1 py-4 rounded-2xl bg-muted/30">
+            <span className={cn('text-3xl font-bold', TYPE_CONFIG[type].amount)}>₹</span>
             <input
               type="number"
               inputMode="decimal"
@@ -239,31 +224,36 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
               placeholder="0"
               className={cn(
                 'text-5xl font-bold bg-transparent border-none outline-none w-52 text-center',
-                'placeholder:text-muted-foreground/40',
+                'placeholder:text-muted-foreground/30',
                 '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
-                TYPE_STYLES[type].amount
+                TYPE_CONFIG[type].amount
               )}
             />
           </div>
 
           {/* Category grid */}
           {type !== 'transfer' && (
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
+            <div className="flex flex-col gap-2.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Category</Label>
               <div className="grid grid-cols-4 gap-2">
                 {visibleCategories.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setCategoryId(cat.id!)}
                     className={cn(
-                      'flex flex-col items-center gap-1 py-3 px-1 rounded-xl border transition-all',
+                      'flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl border transition-all',
                       categoryId === cat.id
-                        ? 'border-primary bg-primary/10'
+                        ? 'border-primary bg-primary/10 shadow-sm shadow-primary/20'
                         : 'border-transparent bg-muted/50 hover:bg-muted active:bg-muted'
                     )}
                   >
-                    <span className="text-2xl leading-none">{cat.icon}</span>
-                    <span className="text-[10px] leading-tight text-muted-foreground line-clamp-1 w-full text-center">
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-xl"
+                      style={{ backgroundColor: cat.color + '28' }}
+                    >
+                      {cat.icon}
+                    </div>
+                    <span className="text-[9px] leading-tight text-muted-foreground line-clamp-1 w-full text-center font-medium">
                       {cat.name}
                     </span>
                   </button>
@@ -274,14 +264,14 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
 
           {/* Account */}
           <div className="flex flex-col gap-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+            <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
               {type === 'transfer' ? 'From Account' : 'Account'}
             </Label>
             <Select
               value={accountId?.toString() ?? ''}
               onValueChange={v => setAccountId(Number(v))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Select account" />
               </SelectTrigger>
               <SelectContent>
@@ -297,12 +287,12 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
           {/* To Account — transfer only */}
           {type === 'transfer' && (
             <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">To Account</Label>
+              <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">To Account</Label>
               <Select
                 value={toAccountId?.toString() ?? ''}
                 onValueChange={v => setToAccountId(Number(v))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Select account" />
                 </SelectTrigger>
                 <SelectContent>
@@ -318,13 +308,13 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
 
           {/* Date */}
           <div className="flex flex-col gap-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Date</Label>
+            <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Date</Label>
             <input
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
               className={cn(
-                'h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
+                'h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm',
                 'ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
                 'text-foreground'
               )}
@@ -333,21 +323,21 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
 
           {/* Note */}
           <div className="flex flex-col gap-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">Note (optional)</Label>
+            <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Note (optional)</Label>
             <Input
               value={note}
               onChange={e => setNote(e.target.value)}
               placeholder="What's this for?"
               maxLength={100}
+              className="rounded-xl"
             />
           </div>
         </div>
 
-        {/* Footer — pinned */}
-        <div className="flex-shrink-0 px-4 py-3 border-t">
+        {/* Footer */}
+        <div className="flex-shrink-0 px-4 py-3 border-t border-border/60">
           {isEditMode ? (
             confirmDelete ? (
-              /* Delete confirmation */
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-center text-muted-foreground">
                   Delete this transaction? This can't be undone.
@@ -355,7 +345,7 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 rounded-xl"
                     onClick={() => setConfirmDelete(false)}
                     disabled={saving}
                   >
@@ -363,7 +353,7 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
                   </Button>
                   <Button
                     variant="destructive"
-                    className="flex-1"
+                    className="flex-1 rounded-xl"
                     onClick={handleDelete}
                     disabled={saving}
                   >
@@ -372,30 +362,28 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
                 </div>
               </div>
             ) : (
-              /* Edit mode footer */
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setConfirmDelete(true)}
-                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12"
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12 rounded-xl"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={!isValid || saving}
-                  className="flex-1 h-12 text-base font-semibold"
+                  className="flex-1 h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30"
                 >
                   {saving ? 'Saving…' : 'Save Changes'}
                 </Button>
               </div>
             )
           ) : (
-            /* Add mode footer */
             <Button
               onClick={handleSave}
               disabled={!isValid || saving}
-              className="w-full h-12 text-base font-semibold"
+              className="w-full h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30"
             >
               {saving ? 'Saving…' : 'Save'}
             </Button>

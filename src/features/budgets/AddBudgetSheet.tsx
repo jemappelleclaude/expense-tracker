@@ -88,8 +88,8 @@ export default function AddBudgetSheet({
         <div className="flex-1 overflow-y-auto px-4 pb-2 flex flex-col gap-5">
 
           {/* Amount */}
-          <div className="flex items-center justify-center gap-1 py-3">
-            <span className="text-4xl font-bold text-primary">₹</span>
+          <div className="flex items-center justify-center gap-1 py-4 rounded-2xl bg-muted/30">
+            <span className="text-3xl font-bold text-primary">₹</span>
             <input
               type="number"
               inputMode="decimal"
@@ -100,7 +100,7 @@ export default function AddBudgetSheet({
               placeholder="0"
               className={cn(
                 'text-5xl font-bold bg-transparent border-none outline-none w-52 text-center text-primary',
-                'placeholder:text-muted-foreground/40',
+                'placeholder:text-muted-foreground/30',
                 '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
               )}
             />
@@ -111,18 +111,18 @@ export default function AddBudgetSheet({
             <div className="flex items-center gap-3 px-1">
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
-                style={{ backgroundColor: (editCategory?.color ?? '#6b7280') + '22' }}
+                style={{ backgroundColor: (editCategory?.color ?? '#7C3AED') + '28' }}
               >
                 {editCategory?.icon ?? '📦'}
               </div>
               <div>
-                <p className="text-sm font-medium">{editCategory?.name ?? 'Category'}</p>
+                <p className="text-sm font-semibold">{editCategory?.name ?? 'Category'}</p>
                 <p className="text-xs text-muted-foreground">Category (can't be changed)</p>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <Label className="text-xs text-muted-foreground uppercase tracking-wide">Category</Label>
+            <div className="flex flex-col gap-2.5">
+              <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Category</Label>
               {availableCategories.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   All expense categories already have a budget this month.
@@ -134,14 +134,19 @@ export default function AddBudgetSheet({
                       key={cat.id}
                       onClick={() => setCategoryId(cat.id!)}
                       className={cn(
-                        'flex flex-col items-center gap-1 py-3 px-1 rounded-xl border transition-all',
+                        'flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl border transition-all',
                         categoryId === cat.id
-                          ? 'border-primary bg-primary/10'
+                          ? 'border-primary bg-primary/10 shadow-sm shadow-primary/20'
                           : 'border-transparent bg-muted/50 hover:bg-muted active:bg-muted'
                       )}
                     >
-                      <span className="text-2xl leading-none">{cat.icon}</span>
-                      <span className="text-[10px] leading-tight text-muted-foreground line-clamp-1 w-full text-center">
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xl"
+                        style={{ backgroundColor: cat.color + '28' }}
+                      >
+                        {cat.icon}
+                      </div>
+                      <span className="text-[9px] leading-tight text-muted-foreground line-clamp-1 w-full text-center font-medium">
                         {cat.name}
                       </span>
                     </button>
@@ -153,7 +158,7 @@ export default function AddBudgetSheet({
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-4 py-3 border-t">
+        <div className="flex-shrink-0 px-4 py-3 border-t border-border/60">
           {isEditMode ? (
             confirmDelete ? (
               <div className="flex flex-col gap-2">
@@ -161,10 +166,10 @@ export default function AddBudgetSheet({
                   Delete this budget? This can't be undone.
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(false)} disabled={saving}>
+                  <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setConfirmDelete(false)} disabled={saving}>
                     Cancel
                   </Button>
-                  <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={saving}>
+                  <Button variant="destructive" className="flex-1 rounded-xl" onClick={handleDelete} disabled={saving}>
                     {saving ? 'Deleting…' : 'Delete'}
                   </Button>
                 </div>
@@ -174,17 +179,17 @@ export default function AddBudgetSheet({
                 <Button
                   variant="outline"
                   onClick={() => setConfirmDelete(true)}
-                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12"
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12 rounded-xl"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                <Button onClick={handleSave} disabled={!isValid || saving} className="flex-1 h-12 text-base font-semibold">
+                <Button onClick={handleSave} disabled={!isValid || saving} className="flex-1 h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30">
                   {saving ? 'Saving…' : 'Save Changes'}
                 </Button>
               </div>
             )
           ) : (
-            <Button onClick={handleSave} disabled={!isValid || saving} className="w-full h-12 text-base font-semibold">
+            <Button onClick={handleSave} disabled={!isValid || saving} className="w-full h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30">
               {saving ? 'Saving…' : 'Add Budget'}
             </Button>
           )}

@@ -13,7 +13,7 @@ const SheetOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-50 bg-black/60',
+      'fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',
       'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       'duration-300',
@@ -24,10 +24,14 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = 'SheetOverlay'
 
+interface SheetContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  hideDragHandle?: boolean
+}
+
 export const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  SheetContentProps
+>(({ className, children, hideDragHandle, ...props }, ref) => (
   <DialogPrimitive.Portal>
     <SheetOverlay />
     <DialogPrimitive.Content
@@ -35,7 +39,7 @@ export const SheetContent = React.forwardRef<
       className={cn(
         'fixed bottom-0 left-1/2 -translate-x-1/2 z-50',
         'w-full max-w-[430px]',
-        'bg-background rounded-t-2xl shadow-2xl',
+        'bg-card rounded-t-3xl shadow-2xl shadow-black/40',
         'flex flex-col',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[state=open]:slide-in-from-bottom-full data-[state=closed]:slide-out-to-bottom-full',
@@ -44,9 +48,11 @@ export const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="flex-shrink-0 flex justify-center pt-3 pb-1">
-        <div className="w-10 h-1 rounded-full bg-muted-foreground/25" />
-      </div>
+      {!hideDragHandle && (
+        <div className="flex-shrink-0 flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-primary/30" />
+        </div>
+      )}
       {children}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>

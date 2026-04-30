@@ -18,23 +18,23 @@ export function MonthSelector({ year, month, onChange }: Props) {
   }
 
   return (
-    <div className="flex items-center justify-between px-2 py-2">
+    <div className="flex items-center justify-between px-3 py-2.5">
       <button
         onClick={prev}
-        className="p-2 rounded-lg hover:bg-accent active:bg-accent/70 transition-colors"
+        className="p-2 rounded-xl hover:bg-accent active:bg-accent/70 transition-colors text-muted-foreground"
         aria-label="Previous month"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4" />
       </button>
-      <span className="font-semibold text-base select-none">
+      <span className="font-semibold text-sm select-none tracking-wide">
         {format(new Date(year, month), 'MMMM yyyy')}
       </span>
       <button
         onClick={next}
-        className="p-2 rounded-lg hover:bg-accent active:bg-accent/70 transition-colors"
+        className="p-2 rounded-xl hover:bg-accent active:bg-accent/70 transition-colors text-muted-foreground"
         aria-label="Next month"
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-4 w-4" />
       </button>
     </div>
   )

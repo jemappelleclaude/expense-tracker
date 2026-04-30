@@ -11,8 +11,8 @@ import { computeBalance } from './AccountTransactionsView'
 
 export default function AccountsPage() {
   const navigate = useNavigate()
-  const accounts     = useLiveQuery(() => db.accounts.toArray(), [])
-  const allTxs       = useLiveQuery(() => db.transactions.toArray(), [])
+  const accounts = useLiveQuery(() => db.accounts.toArray(), [])
+  const allTxs   = useLiveQuery(() => db.transactions.toArray(), [])
 
   const [addOpen,    setAddOpen]    = useState(false)
   const [editingAcc, setEditingAcc] = useState<Account | undefined>(undefined)
@@ -31,9 +31,7 @@ export default function AccountsPage() {
     [accountsWithBalance]
   )
 
-  // Show account transactions view when tapping an account card
   if (viewingAcc) {
-    // Re-find the account from live data so edits propagate
     const liveAcc = accounts?.find(a => a.id === viewingAcc.id) ?? viewingAcc
     return (
       <AccountTransactionsView
@@ -45,48 +43,43 @@ export default function AccountsPage() {
 
   return (
     <>
-      {/* Sticky header with back button */}
-      <div className="sticky top-0 z-10 bg-background border-b flex items-center gap-2 px-4 py-3">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl border-b border-border/50 flex items-center gap-2 px-4 py-3">
         <button
           onClick={() => navigate(-1)}
-          className="p-1.5 rounded-lg hover:bg-accent text-muted-foreground transition-colors"
+          className="p-1.5 rounded-xl hover:bg-accent text-muted-foreground transition-colors"
           aria-label="Go back"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="font-semibold text-base">Accounts</h1>
+        <h1 className="font-bold text-base">Accounts</h1>
       </div>
 
       <div className="flex flex-col gap-4 p-4 pb-28">
 
-        {/* Total balance card */}
-        <div className="flex flex-col items-center gap-1 py-6 rounded-2xl bg-card border">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Balance</p>
-          <p className={cn(
-            'text-4xl font-bold tabular-nums mt-1',
-            totalBalance > 0 ? 'text-green-500'
-            : totalBalance < 0 ? 'text-red-400'
-            : 'text-foreground'
-          )}>
+        {/* Total balance hero card */}
+        <div className="rounded-2xl gradient-primary p-6 flex flex-col items-center gap-1 shadow-lg shadow-violet-500/30">
+          <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">Total Balance</p>
+          <p className="text-4xl font-bold tabular-nums text-white mt-1">
             {formatCurrency(totalBalance)}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-white/50 mt-1">
             across {accountsWithBalance.length} account{accountsWithBalance.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Account list */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           {accountsWithBalance.map(({ acc, balance }) => (
             <button
               key={acc.id}
               onClick={() => setViewingAcc(acc)}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-card border text-left active:bg-accent/50 transition-colors w-full"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-card border border-border/60 text-left active:bg-accent/30 transition-colors w-full"
             >
-              {/* Icon */}
+              {/* Icon in colored circle */}
               <div
-                className="w-11 h-11 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
-                style={{ backgroundColor: acc.color + '22' }}
+                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                style={{ backgroundColor: acc.color + '28' }}
               >
                 {acc.icon}
               </div>
@@ -94,24 +87,23 @@ export default function AccountsPage() {
               {/* Name + type */}
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{acc.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{acc.type}</p>
+                <p className="text-xs text-muted-foreground capitalize mt-0.5">{acc.type}</p>
               </div>
 
-              {/* Balance */}
+              {/* Balance + edit */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <p className={cn(
                   'text-base font-bold tabular-nums',
-                  balance > 0 ? 'text-green-500'
+                  balance > 0 ? 'text-emerald-500'
                   : balance < 0 ? 'text-red-400'
                   : 'text-foreground'
                 )}>
                   {formatCurrency(balance)}
                 </p>
 
-                {/* Edit button — stops propagation so tap edit ≠ tap card */}
                 <button
                   onClick={e => { e.stopPropagation(); setEditingAcc(acc) }}
-                  className="p-1.5 rounded-lg hover:bg-muted active:bg-muted/70 text-muted-foreground transition-colors"
+                  className="p-1.5 rounded-xl hover:bg-muted active:bg-muted/70 text-muted-foreground transition-colors"
                   aria-label={`Edit ${acc.name}`}
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -132,18 +124,16 @@ export default function AccountsPage() {
       <button
         onClick={() => setAddOpen(true)}
         aria-label="Add account"
-        className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full gradient-primary text-white shadow-lg shadow-violet-500/40 flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus className="h-6 w-6" strokeWidth={2.5} />
       </button>
 
-      {/* Add account sheet */}
       <AddAccountSheet
         open={addOpen}
         onOpenChange={setAddOpen}
       />
 
-      {/* Edit account sheet */}
       <AddAccountSheet
         open={!!editingAcc}
         onOpenChange={open => { if (!open) setEditingAcc(undefined) }}

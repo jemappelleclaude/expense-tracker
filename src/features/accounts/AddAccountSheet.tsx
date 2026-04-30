@@ -212,7 +212,7 @@ export default function AddAccountSheet({ open, onOpenChange, account, onDeleted
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 px-4 py-3 border-t">
+        <div className="flex-shrink-0 px-4 py-3 border-t border-border/60">
           {isEditMode ? (
             confirmDelete ? (
               <div className="flex flex-col gap-2">
@@ -231,7 +231,7 @@ export default function AddAccountSheet({ open, onOpenChange, account, onDeleted
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1"
+                    className="flex-1 rounded-xl"
                     onClick={() => setConfirmDelete(false)}
                     disabled={saving}
                   >
@@ -240,7 +240,7 @@ export default function AddAccountSheet({ open, onOpenChange, account, onDeleted
                   {txCount === 0 && (
                     <Button
                       variant="destructive"
-                      className="flex-1"
+                      className="flex-1 rounded-xl"
                       onClick={handleDelete}
                       disabled={saving}
                     >
@@ -254,14 +254,14 @@ export default function AddAccountSheet({ open, onOpenChange, account, onDeleted
                 <Button
                   variant="outline"
                   onClick={() => setConfirmDelete(true)}
-                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12"
+                  className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive px-3 h-12 rounded-xl"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <Button
                   onClick={handleSave}
                   disabled={!isValid || saving}
-                  className="flex-1 h-12 text-base font-semibold"
+                  className="flex-1 h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30"
                 >
                   {saving ? 'Saving…' : 'Save Changes'}
                 </Button>
@@ -271,7 +271,7 @@ export default function AddAccountSheet({ open, onOpenChange, account, onDeleted
             <Button
               onClick={handleSave}
               disabled={!isValid || saving}
-              className="w-full h-12 text-base font-semibold"
+              className="w-full h-12 text-base font-semibold rounded-xl gradient-primary border-0 text-white shadow-lg shadow-violet-500/30"
             >
               {saving ? 'Saving…' : 'Add Account'}
             </Button>

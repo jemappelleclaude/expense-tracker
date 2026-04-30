@@ -19,7 +19,6 @@ export default function TransactionsPage() {
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
-  // undefined = sheet closed, Transaction = edit mode
   const [editingTx, setEditingTx] = useState<Transaction | undefined>(undefined)
 
   const transactions = useLiveQuery(
@@ -77,30 +76,29 @@ export default function TransactionsPage() {
 
   return (
     <>
-      {/* ── Sticky header ─────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-background border-b">
-
+      {/* ── Sticky header ── */}
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl border-b border-border/50">
         <MonthSelector year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
 
         {/* Summary bar */}
-        <div className="grid grid-cols-3 divide-x divide-border pb-2.5">
+        <div className="grid grid-cols-3 divide-x divide-border/60 pb-3 px-1">
           <div className="text-center px-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Income</p>
-            <p className="text-sm font-semibold text-green-500 mt-0.5 tabular-nums truncate px-1">
+            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Income</p>
+            <p className="text-sm font-bold text-emerald-500 mt-0.5 tabular-nums truncate px-1">
               {formatCurrency(totalIncome)}
             </p>
           </div>
           <div className="text-center px-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Expense</p>
-            <p className="text-sm font-semibold text-red-400 mt-0.5 tabular-nums truncate px-1">
+            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Expense</p>
+            <p className="text-sm font-bold text-red-400 mt-0.5 tabular-nums truncate px-1">
               {formatCurrency(totalExpense)}
             </p>
           </div>
           <div className="text-center px-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Balance</p>
+            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Balance</p>
             <p className={cn(
-              'text-sm font-semibold mt-0.5 tabular-nums truncate px-1',
-              balance > 0 ? 'text-green-500' : balance < 0 ? 'text-red-400' : 'text-foreground'
+              'text-sm font-bold mt-0.5 tabular-nums truncate px-1',
+              balance > 0 ? 'text-emerald-500' : balance < 0 ? 'text-red-400' : 'text-foreground'
             )}>
               {formatCurrency(balance)}
             </p>
@@ -108,7 +106,7 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* ── Content ───────────────────────────────────── */}
+      {/* ── Content ── */}
       <div className="pb-28">
 
         {loaded && groups.length === 0 && (
@@ -119,71 +117,82 @@ export default function TransactionsPage() {
         )}
 
         {groups.map(group => (
-          <div key={group.dateKey}>
+          <div key={group.dateKey} className="mb-1">
 
-            <div className="flex items-center justify-between px-4 py-1.5 bg-muted/40">
-              <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
+            {/* Date group header */}
+            <div className="flex items-center justify-between px-4 py-2 mt-2">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {group.label}
+              </span>
               <span className={cn(
-                'text-xs font-medium tabular-nums',
-                group.net > 0 ? 'text-green-500' : group.net < 0 ? 'text-red-400' : 'text-muted-foreground'
+                'text-xs font-semibold tabular-nums',
+                group.net > 0 ? 'text-emerald-500' : group.net < 0 ? 'text-red-400' : 'text-muted-foreground'
               )}>
                 {group.net > 0 ? '+' : ''}{formatCurrency(group.net)}
               </span>
             </div>
 
-            {group.transactions.map((tx, i) => {
-              const cat   = categoryMap[tx.categoryId]
-              const acc   = accountMap[tx.accountId]
-              const toAcc = tx.toAccountId ? accountMap[tx.toAccountId] : undefined
+            {/* Transaction rows inside a card */}
+            <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+              {group.transactions.map((tx, i) => {
+                const cat   = categoryMap[tx.categoryId]
+                const acc   = accountMap[tx.accountId]
+                const toAcc = tx.toAccountId ? accountMap[tx.toAccountId] : undefined
 
-              return (
-                <button
-                  key={tx.id}
-                  onClick={() => setEditingTx(tx)}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 w-full text-left',
-                    'active:bg-accent/50 transition-colors',
-                    i < group.transactions.length - 1 && 'border-b border-border/40'
-                  )}
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                    style={{ backgroundColor: (cat?.color ?? '#6b7280') + '22' }}
+                return (
+                  <button
+                    key={tx.id}
+                    onClick={() => setEditingTx(tx)}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3.5 w-full text-left',
+                      'active:bg-accent/50 transition-colors',
+                      i < group.transactions.length - 1 && 'border-b border-border/40'
+                    )}
                   >
-                    {tx.type === 'transfer' ? '↔️' : (cat?.icon ?? '💸')}
-                  </div>
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                      style={{ backgroundColor: (cat?.color ?? '#7C3AED') + '28' }}
+                    >
+                      {tx.type === 'transfer' ? '↔️' : (cat?.icon ?? '💸')}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {cat?.name ?? (tx.type === 'transfer' ? 'Transfer' : 'Transaction')}
-                    </p>
-                    {tx.note ? (
-                      <p className="text-xs text-muted-foreground truncate">{tx.note}</p>
-                    ) : null}
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">
+                        {cat?.name ?? (tx.type === 'transfer' ? 'Transfer' : 'Transaction')}
+                      </p>
+                      {tx.note ? (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{tx.note}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground/50 truncate mt-0.5">
+                          {toAcc ? `${acc?.name ?? ''} → ${toAcc.name}` : (acc?.name ?? '')}
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                    <span className={cn(
-                      'text-sm font-semibold tabular-nums',
-                      tx.type === 'income'   ? 'text-green-500'
-                      : tx.type === 'transfer' ? 'text-blue-400'
-                      : 'text-red-400'
-                    )}>
-                      {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
-                      {formatCurrency(tx.amount)}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {toAcc ? `${acc?.name ?? ''} → ${toAcc.name}` : (acc?.name ?? '')}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
+                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                      <span className={cn(
+                        'text-sm font-bold tabular-nums',
+                        tx.type === 'income'   ? 'text-emerald-500'
+                        : tx.type === 'transfer' ? 'text-violet-400'
+                        : 'text-red-400'
+                      )}>
+                        {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
+                        {formatCurrency(tx.amount)}
+                      </span>
+                      {tx.note && (
+                        <span className="text-[10px] text-muted-foreground/50">
+                          {toAcc ? `${acc?.name ?? ''} → ${toAcc.name}` : (acc?.name ?? '')}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Edit-mode sheet (tap existing transaction) */}
       <AddTransactionSheet
         open={editingTx !== undefined}
         onOpenChange={open => { if (!open) setEditingTx(undefined) }}

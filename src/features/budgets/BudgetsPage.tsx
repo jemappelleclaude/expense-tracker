@@ -3,7 +3,6 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Plus, PiggyBank } from 'lucide-react'
 import { db, type Budget, type Category } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
-import { cn } from '@/lib/utils'
 import { MonthSelector } from '@/components/MonthSelector'
 import AddBudgetSheet from './AddBudgetSheet'
 
@@ -12,10 +11,10 @@ function monthKey(year: number, month: number): string {
 }
 
 function barColor(pct: number): string {
-  if (pct >= 100) return 'bg-red-500'
-  if (pct >= 90)  return 'bg-red-400'
-  if (pct >= 75)  return 'bg-yellow-400'
-  return 'bg-green-500'
+  if (pct >= 100) return '#ef4444'
+  if (pct >= 90)  return '#f97316'
+  if (pct >= 75)  return '#eab308'
+  return '#22c55e'
 }
 
 export default function BudgetsPage() {
@@ -23,7 +22,7 @@ export default function BudgetsPage() {
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
 
-  const [addOpen,      setAddOpen]      = useState(false)
+  const [addOpen,       setAddOpen]       = useState(false)
   const [editingBudget, setEditingBudget] = useState<Budget | undefined>(undefined)
 
   const key = monthKey(year, month)
@@ -44,7 +43,6 @@ export default function BudgetsPage() {
     [categories]
   )
 
-  // Expense categories that don't yet have a budget this month — for the add sheet
   const budgetedCategoryIds = useMemo(
     () => new Set((budgets ?? []).map(b => b.categoryId)),
     [budgets]
@@ -60,7 +58,6 @@ export default function BudgetsPage() {
     [expenseCategories, budgetedCategoryIds]
   )
 
-  // Spent per category for this month
   const spentByCategory = useMemo(() => {
     return (transactions ?? [])
       .filter(t => t.type === 'expense')
@@ -70,7 +67,6 @@ export default function BudgetsPage() {
       }, {})
   }, [transactions])
 
-  // Enriched budget rows
   const rows = useMemo(() => {
     return (budgets ?? []).map(b => {
       const cat   = categoryMap[b.categoryId]
@@ -78,10 +74,9 @@ export default function BudgetsPage() {
       const pct   = b.monthlyLimit > 0 ? (spent / b.monthlyLimit) * 100 : 0
       const over  = spent > b.monthlyLimit
       return { budget: b, cat, spent, pct, over }
-    }).sort((a, b) => b.pct - a.pct) // most-stressed budgets first
+    }).sort((a, b) => b.pct - a.pct)
   }, [budgets, categoryMap, spentByCategory])
 
-  // Overall summary
   const { totalBudgeted, totalSpent } = useMemo(() => ({
     totalBudgeted: rows.reduce((s, r) => s + r.budget.monthlyLimit, 0),
     totalSpent:    rows.reduce((s, r) => s + r.spent, 0),
@@ -98,52 +93,49 @@ export default function BudgetsPage() {
   return (
     <>
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-background border-b">
+      <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl border-b border-border/50">
         <MonthSelector year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m) }} />
       </div>
 
       <div className="flex flex-col gap-4 p-4 pb-28">
 
-        {/* Overall summary */}
+        {/* Overall summary card */}
         {rows.length > 0 && (
-          <div className="rounded-2xl bg-card border p-4 flex flex-col gap-3">
-            <div className="flex justify-between items-baseline">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Overall</p>
-              <p className={cn(
-                'text-xs font-semibold tabular-nums',
-                overallPct >= 100 ? 'text-red-400'
-                : overallPct >= 75 ? 'text-yellow-400'
-                : 'text-green-500'
-              )}>
+          <div className="rounded-2xl bg-card border border-border/60 p-4 flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Overall Budget</p>
+              <p className="text-sm font-bold tabular-nums" style={{ color: barColor(overallPct) }}>
                 {overallPct.toFixed(0)}%
               </p>
             </div>
 
-            {/* Overall bar */}
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            {/* Overall bar — thick gradient */}
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
               <div
-                className={cn('h-full rounded-full transition-all duration-500', barColor(overallPct))}
-                style={{ width: `${Math.min(overallPct, 100)}%` }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(overallPct, 100)}%`,
+                  backgroundColor: barColor(overallPct),
+                }}
               />
             </div>
 
-            <div className="grid grid-cols-3 divide-x divide-border">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
               <div className="text-center pr-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Budgeted</p>
-                <p className="text-sm font-semibold tabular-nums mt-0.5">{formatCurrency(totalBudgeted)}</p>
+                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Budgeted</p>
+                <p className="text-sm font-bold tabular-nums mt-0.5">{formatCurrency(totalBudgeted)}</p>
               </div>
               <div className="text-center px-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Spent</p>
-                <p className="text-sm font-semibold tabular-nums mt-0.5">{formatCurrency(totalSpent)}</p>
+                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Spent</p>
+                <p className="text-sm font-bold tabular-nums mt-0.5">{formatCurrency(totalSpent)}</p>
               </div>
               <div className="text-center pl-3">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">
                   {totalSpent > totalBudgeted ? 'Over' : 'Left'}
                 </p>
-                <p className={cn(
-                  'text-sm font-semibold tabular-nums mt-0.5',
-                  totalSpent > totalBudgeted ? 'text-red-400' : 'text-green-500'
-                )}>
+                <p className="text-sm font-bold tabular-nums mt-0.5" style={{
+                  color: totalSpent > totalBudgeted ? '#ef4444' : '#22c55e'
+                }}>
                   {formatCurrency(Math.abs(totalBudgeted - totalSpent))}
                 </p>
               </div>
@@ -156,51 +148,49 @@ export default function BudgetsPage() {
           <button
             key={b.id}
             onClick={() => setEditingBudget(b)}
-            className="w-full rounded-2xl bg-card border p-4 flex flex-col gap-3 text-left active:bg-accent/50 transition-colors"
+            className="w-full rounded-2xl bg-card border border-border/60 p-4 flex flex-col gap-3 text-left active:bg-accent/30 transition-colors"
           >
             {/* Category row */}
             <div className="flex items-center gap-3">
               <div
-                className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                style={{ backgroundColor: (cat?.color ?? '#6b7280') + '22' }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+                style={{ backgroundColor: (cat?.color ?? '#7C3AED') + '28' }}
               >
                 {cat?.icon ?? '📦'}
               </div>
               <p className="flex-1 text-sm font-semibold">{cat?.name ?? 'Unknown'}</p>
-              <p className={cn(
-                'text-xs font-semibold tabular-nums',
-                pct >= 100 ? 'text-red-400'
-                : pct >= 75 ? 'text-yellow-400'
-                : 'text-green-500'
-              )}>
+              <p className="text-sm font-bold tabular-nums" style={{ color: barColor(pct) }}>
                 {pct.toFixed(0)}%
               </p>
             </div>
 
-            {/* Progress bar */}
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
+            {/* Progress bar — thick, rounded, gradient color */}
+            <div className="h-3 bg-muted rounded-full overflow-hidden">
               <div
-                className={cn('h-full rounded-full transition-all duration-500', barColor(pct))}
-                style={{ width: `${Math.min(pct, 100)}%` }}
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${Math.min(pct, 100)}%`,
+                  backgroundColor: barColor(pct),
+                }}
               />
             </div>
 
             {/* Amounts row */}
             <div className="flex justify-between items-center">
               <p className="text-xs text-muted-foreground tabular-nums">
-                <span className={cn('font-medium', over ? 'text-red-400' : 'text-foreground')}>
+                <span className="font-semibold" style={{ color: over ? '#ef4444' : undefined }}>
                   {formatCurrency(spent)}
                 </span>
-                {' '}spent of{' '}
+                {' '}of{' '}
                 <span>{formatCurrency(b.monthlyLimit)}</span>
               </p>
               {over ? (
-                <p className="text-xs font-semibold text-red-400 tabular-nums">
+                <p className="text-xs font-bold text-red-400 tabular-nums">
                   {formatCurrency(spent - b.monthlyLimit)} over
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground tabular-nums">
-                  <span className="font-medium text-foreground">{formatCurrency(b.monthlyLimit - spent)}</span>
+                  <span className="font-semibold text-emerald-500">{formatCurrency(b.monthlyLimit - spent)}</span>
                   {' '}left
                 </p>
               )}
@@ -222,12 +212,11 @@ export default function BudgetsPage() {
       <button
         onClick={() => setAddOpen(true)}
         aria-label="Add budget"
-        className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed bottom-[4.75rem] right-4 z-40 h-14 w-14 rounded-full gradient-primary text-white shadow-lg shadow-violet-500/40 flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus className="h-6 w-6" strokeWidth={2.5} />
       </button>
 
-      {/* Add budget sheet */}
       <AddBudgetSheet
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -235,7 +224,6 @@ export default function BudgetsPage() {
         availableCategories={availableForAdd}
       />
 
-      {/* Edit budget sheet */}
       <AddBudgetSheet
         open={!!editingBudget}
         onOpenChange={open => { if (!open) setEditingBudget(undefined) }}
