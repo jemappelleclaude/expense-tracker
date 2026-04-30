@@ -53,8 +53,8 @@ export default function Layout() {
         </div>
       </div>
 
-      {/* ── Fixed bottom nav — frosted glass ── */}
-      <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-white/5 dark:bg-background/85 bg-background/95 backdrop-blur-xl">
+      {/* ── Fixed bottom nav ── z-50 ── */}
+      <nav className="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/95 backdrop-blur-xl">
         <div className="max-w-[430px] mx-auto flex">
           {LEFT_TABS.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -84,7 +84,7 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          {/* Center placeholder for FAB */}
+          {/* Center gap — FAB overlaps here */}
           <div className="flex-1" />
 
           {RIGHT_TABS.map(({ to, label, icon: Icon }) => (
@@ -119,24 +119,24 @@ export default function Layout() {
       {/* ── FAB backdrop ── */}
       {fabOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-[55] bg-black/30 backdrop-blur-sm"
           onClick={() => setFabOpen(false)}
         />
       )}
 
-      {/* ── Action menu ── */}
+      {/* ── Action menu — above FAB ── */}
       {fabOpen && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-3">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[65] flex flex-col items-center gap-3">
           <button
             onClick={openWorthIt}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-card border border-white/10 shadow-xl shadow-black/20 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
+            className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
           >
             <Scale className="h-4 w-4 text-primary" />
             Worth It?
           </button>
           <button
             onClick={() => openAddTransaction()}
-            className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-card border border-white/10 shadow-xl shadow-black/20 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
+            className="flex items-center gap-2.5 px-5 py-3 rounded-full bg-card border border-border shadow-lg shadow-black/10 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
           >
             <Plus className="h-4 w-4 text-primary" />
             Add Transaction
@@ -144,14 +144,21 @@ export default function Layout() {
         </div>
       )}
 
-      {/* ── Center raised FAB — gradient purple ── */}
+      {/*
+        ── Center raised FAB ──
+        - z-[60]: above nav (z-50) so it's never clipped
+        - bottom-7 (28px): centers the 56px FAB on the nav's top edge
+          Nav ≈ 56px tall → top edge ≈ 56px from screen bottom
+          FAB center = bottom + radius = 28 + 28 = 56px ✓
+        - No border-background ring: just shadow for lift
+      */}
       <button
         onClick={() => setFabOpen(f => !f)}
         aria-label="Actions"
         className={cn(
-          'fixed bottom-3 left-1/2 -translate-x-1/2 z-40',
-          'h-14 w-14 rounded-full gradient-primary text-white shadow-lg shadow-violet-500/40',
-          'border-4 border-background',
+          'fixed bottom-7 left-1/2 -translate-x-1/2 z-[60]',
+          'h-14 w-14 rounded-full gradient-primary text-white',
+          'shadow-xl shadow-violet-500/40',
           'flex items-center justify-center active:scale-95 transition-all duration-200'
         )}
       >

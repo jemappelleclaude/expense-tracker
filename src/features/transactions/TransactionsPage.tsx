@@ -133,7 +133,7 @@ export default function TransactionsPage() {
             </div>
 
             {/* Transaction rows inside a card */}
-            <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+            <div className="mx-4 card-surface overflow-hidden">
               {group.transactions.map((tx, i) => {
                 const cat   = categoryMap[tx.categoryId]
                 const acc   = accountMap[tx.accountId]

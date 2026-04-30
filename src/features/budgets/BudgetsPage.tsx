@@ -101,7 +101,7 @@ export default function BudgetsPage() {
 
         {/* Overall summary card */}
         {rows.length > 0 && (
-          <div className="rounded-2xl bg-card border border-border/60 p-4 flex flex-col gap-3">
+          <div className="card-surface p-4 flex flex-col gap-3">
             <div className="flex justify-between items-center">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Overall Budget</p>
               <p className="text-sm font-bold tabular-nums" style={{ color: barColor(overallPct) }}>
@@ -148,7 +148,7 @@ export default function BudgetsPage() {
           <button
             key={b.id}
             onClick={() => setEditingBudget(b)}
-            className="w-full rounded-2xl bg-card border border-border/60 p-4 flex flex-col gap-3 text-left active:bg-accent/30 transition-colors"
+            className="w-full card-surface p-4 flex flex-col gap-3 text-left active:bg-accent/30 transition-colors"
           >
             {/* Category row */}
             <div className="flex items-center gap-3">

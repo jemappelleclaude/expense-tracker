@@ -85,7 +85,7 @@ function PendingRow({ item, onBuy, onSkip }: {
   return (
     <div className={cn(
       'rounded-2xl border p-4 flex flex-col gap-3',
-      expired ? 'bg-red-500/8 border-red-500/25' : 'bg-card border-border/60'
+      expired ? 'bg-red-500/8 border-red-500/25' : 'bg-card border-border/50'
     )}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -389,7 +389,7 @@ export default function WorthItSheet({ open, onOpenChange, onBuyIt }: Props) {
 
               {/* Think About It duration picker */}
               {thinking && (
-                <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4">
+                <div className="flex flex-col gap-3 card-surface p-4">
                   <p className="text-sm font-semibold text-center text-muted-foreground">
                     Come back and decide in…
                   </p>

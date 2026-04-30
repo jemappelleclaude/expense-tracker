@@ -74,7 +74,7 @@ export default function AccountsPage() {
             <button
               key={acc.id}
               onClick={() => setViewingAcc(acc)}
-              className="flex items-center gap-3.5 p-4 rounded-2xl bg-card border border-border/60 text-left active:bg-accent/30 transition-colors w-full"
+              className="flex items-center gap-3.5 p-4 card-surface text-left active:bg-accent/30 transition-colors w-full"
             >
               {/* Icon in colored circle */}
               <div

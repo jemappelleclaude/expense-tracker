@@ -257,7 +257,7 @@ export default function SettingsPage() {
           <SectionHeader title="Accounts" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+        <div className="mx-4 card-surface overflow-hidden">
           <SettingRow
             icon={<Wallet className="h-4 w-4" />}
             label="Manage Accounts"
@@ -270,7 +270,7 @@ export default function SettingsPage() {
           <SectionHeader title="Categories" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden divide-y divide-border/40">
+        <div className="mx-4 card-surface overflow-hidden divide-y divide-border/40">
           {/* Expense group */}
           <div className="px-4 py-2 bg-muted/30">
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Expense</p>
@@ -335,7 +335,7 @@ export default function SettingsPage() {
           <SectionHeader title="Salary & Work Hours" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 px-4 py-4 flex flex-col gap-4">
+        <div className="mx-4 card-surface px-4 py-4 flex flex-col gap-4">
           <p className="text-xs text-muted-foreground">
             Used by "Worth It?" to calculate how many hours of work a purchase costs.
           </p>
@@ -392,7 +392,7 @@ export default function SettingsPage() {
           <SectionHeader title="Recurring Transactions" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden divide-y divide-border/40">
+        <div className="mx-4 card-surface overflow-hidden divide-y divide-border/40">
           {(recurringRules ?? []).length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-5 px-4">
               No recurring rules set up yet.
@@ -421,7 +421,7 @@ export default function SettingsPage() {
           <SectionHeader title="Preferences" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden divide-y divide-border/40">
+        <div className="mx-4 card-surface overflow-hidden divide-y divide-border/40">
           {/* Dark mode */}
           <div className="flex items-center gap-3 w-full py-3.5 px-4">
             <span className="text-muted-foreground">
@@ -444,7 +444,7 @@ export default function SettingsPage() {
           <SectionHeader title="Danger Zone" />
         </div>
 
-        <div className="mx-4 rounded-2xl bg-card border border-red-500/20 overflow-hidden">
+        <div className="mx-4 rounded-2xl bg-card border border-red-200 dark:border-red-500/20 overflow-hidden shadow-sm dark:shadow-none">
           {resetStep === 0 && (
             <SettingRow
               icon={<RefreshCw className="h-4 w-4" />}

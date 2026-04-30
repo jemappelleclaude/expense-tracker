@@ -142,7 +142,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Spending donut ── */}
-        <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+        <div className="mx-4 card-surface overflow-hidden">
           <div className="px-4 pt-4 pb-0">
             <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
               Spending Breakdown
@@ -270,7 +270,7 @@ export default function DashboardPage() {
 
         {/* ── Top 5 spending ── */}
         {categoryExpenses.length > 0 && (
-          <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+          <div className="mx-4 card-surface overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 Top Spending
@@ -311,7 +311,7 @@ export default function DashboardPage() {
 
         {/* ── Overview bars ── */}
         {(totalIncome > 0 || totalExpense > 0) && (
-          <div className="mx-4 rounded-2xl bg-card border border-border/60 overflow-hidden">
+          <div className="mx-4 card-surface overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 Overview
