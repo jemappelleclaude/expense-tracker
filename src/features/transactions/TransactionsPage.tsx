@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ReceiptText } from 'lucide-react'
+import { ReceiptText, Plus, X, Scale } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { MonthSelector } from '@/components/MonthSelector'
 import { db, type Transaction } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useActions } from '@/lib/actions'
 import AddTransactionSheet from './AddTransactionSheet'
 
 function getDateLabel(date: Date): string {
@@ -20,6 +21,16 @@ export default function TransactionsPage() {
   const [month, setMonth] = useState(now.getMonth())
 
   const [editingTx, setEditingTx] = useState<Transaction | undefined>(undefined)
+  const [fabOpen, setFabOpen]     = useState(false)
+
+  const { openAddTransaction, openWorthIt, isSheetOpen } = useActions()
+
+  // Close action menu whenever a global sheet opens
+  useEffect(() => {
+    if (isSheetOpen) setFabOpen(false)
+  }, [isSheetOpen])
+
+  const fabVisible = !isSheetOpen && editingTx === undefined
 
   const transactions = useLiveQuery(
     () => {
@@ -198,6 +209,53 @@ export default function TransactionsPage() {
         onOpenChange={open => { if (!open) setEditingTx(undefined) }}
         transaction={editingTx}
       />
+
+      {/* ── FAB backdrop ── */}
+      {fabOpen && fabVisible && (
+        <div
+          className="fixed inset-0 z-[39]"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+
+      {/* ── FAB action menu ── */}
+      {fabOpen && fabVisible && (
+        <div className="fixed bottom-[8.5rem] right-4 z-40 flex flex-col items-end gap-2.5">
+          <button
+            onClick={() => { openWorthIt(); setFabOpen(false) }}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-card border border-border shadow-lg shadow-black/10 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
+          >
+            <Scale className="h-4 w-4 text-primary" />
+            Worth It?
+          </button>
+          <button
+            onClick={() => { openAddTransaction(); setFabOpen(false) }}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-card border border-border shadow-lg shadow-black/10 text-sm font-semibold text-foreground active:scale-95 transition-transform whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4 text-primary" />
+            Add Transaction
+          </button>
+        </div>
+      )}
+
+      {/* ── Page-scoped FAB — bottom-right, hidden when any sheet is open ── */}
+      {fabVisible && (
+        <button
+          onClick={() => setFabOpen(f => !f)}
+          aria-label="Quick actions"
+          className={cn(
+            'fixed bottom-[4.75rem] right-4 z-40',
+            'h-14 w-14 rounded-full gradient-primary text-white',
+            'shadow-xl shadow-violet-500/40',
+            'flex items-center justify-center active:scale-95 transition-all duration-200'
+          )}
+        >
+          {fabOpen
+            ? <X className="h-6 w-6" />
+            : <Plus className="h-6 w-6" strokeWidth={2.5} />
+          }
+        </button>
+      )}
     </>
   )
 }

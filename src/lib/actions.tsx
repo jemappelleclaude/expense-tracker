@@ -9,6 +9,7 @@ export interface Prefill {
 export interface ActionsContextValue {
   openAddTransaction: (prefill?: Prefill) => void
   openWorthIt: () => void
+  isSheetOpen: boolean
 }
 
 export const ActionsContext = createContext<ActionsContextValue | null>(null)
