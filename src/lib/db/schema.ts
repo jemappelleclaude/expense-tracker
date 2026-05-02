@@ -64,6 +64,14 @@ export interface PendingPurchase {
   status: 'pending' | 'bought' | 'skipped'
 }
 
+export interface SavedNote {
+  id?: number
+  text: string
+  categoryId: number
+  usageCount: number
+  lastUsedAt: Date
+}
+
 export interface RecurringRule {
   id?: number
   transactionTemplate: {
@@ -87,6 +95,7 @@ export class ExpenseTrackerDB extends Dexie {
   recurringRules!: Table<RecurringRule>
   userSettings!: Table<UserSetting>
   pendingPurchases!: Table<PendingPurchase>
+  savedNotes!: Table<SavedNote>
 
   constructor() {
     super('ExpenseTrackerDB')
@@ -143,6 +152,17 @@ export class ExpenseTrackerDB extends Dexie {
       recurringRules:   '++id, frequency, nextDate, endDate',
       userSettings:     'key',
       pendingPurchases: '++id, status, createdAt',
+    })
+    // v7: adds savedNotes for note autocomplete
+    this.version(7).stores({
+      transactions:     '++id, type, categoryId, accountId, toAccountId, date, isRecurring, recurringRuleId, createdAt',
+      categories:       '++id, name, type, isDefault',
+      accounts:         '++id, name, type, isDefault',
+      budgets:          '++id, categoryId, month',
+      recurringRules:   '++id, frequency, nextDate, endDate',
+      userSettings:     'key',
+      pendingPurchases: '++id, status, createdAt',
+      savedNotes:       '++id, categoryId',
     })
   }
 }

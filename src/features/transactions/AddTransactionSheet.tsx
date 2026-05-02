@@ -4,8 +4,8 @@ import { X, Trash2 } from 'lucide-react'
 import { db, type Transaction, type TransactionType } from '@/lib/db'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { NoteAutocomplete } from './NoteAutocomplete'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -117,19 +117,30 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
       ? toAccountId !== null && toAccountId !== accountId
       : categoryId !== null)
 
+  async function upsertSavedNote(text: string, catId: number) {
+    const all = await db.savedNotes.toArray()
+    const existing = all.find(n => n.text === text)
+    if (existing) {
+      await db.savedNotes.update(existing.id!, { usageCount: existing.usageCount + 1, lastUsedAt: new Date() })
+    } else {
+      await db.savedNotes.add({ text, categoryId: catId, usageCount: 1, lastUsedAt: new Date() })
+    }
+  }
+
   async function handleSave() {
     if (!isValid) return
     setSaving(true)
     try {
       const now    = new Date()
       const txDate = new Date(date + 'T00:00:00')
+      const effectiveCatId = type === 'transfer' ? 0 : categoryId!
 
       if (transaction) {
         await db.transactions.put({
           ...transaction,
           type,
           amount:      parsedAmount,
-          categoryId:  type === 'transfer' ? 0 : categoryId!,
+          categoryId:  effectiveCatId,
           accountId:   accountId!,
           toAccountId: type === 'transfer' ? toAccountId! : undefined,
           date:        txDate,
@@ -141,7 +152,7 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
         await db.transactions.add({
           type,
           amount:      parsedAmount,
-          categoryId:  type === 'transfer' ? 0 : categoryId!,
+          categoryId:  effectiveCatId,
           accountId:   accountId!,
           toAccountId: type === 'transfer' ? toAccountId! : undefined,
           date:        txDate,
@@ -151,6 +162,9 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
           updatedAt:   now,
         })
       }
+
+      const trimmedNote = note.trim()
+      if (trimmedNote) await upsertSavedNote(trimmedNote, effectiveCatId)
 
       resetForm()
       onOpenChange(false)
@@ -324,9 +338,10 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
           {/* Note */}
           <div className="flex flex-col gap-2">
             <Label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Note (optional)</Label>
-            <Input
+            <NoteAutocomplete
               value={note}
-              onChange={e => setNote(e.target.value)}
+              onChange={setNote}
+              categoryId={categoryId}
               placeholder="What's this for?"
               maxLength={100}
               className="rounded-xl"
