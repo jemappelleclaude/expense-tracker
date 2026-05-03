@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { TrendingDown, PiggyBank, Clock, ChevronRight } from 'lucide-react'
+import { TrendingDown, PiggyBank, Clock, ChevronRight, ArrowLeft, ReceiptText } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { format } from 'date-fns'
 import { NavLink } from 'react-router-dom'
 import { db } from '@/lib/db'
 import { formatCurrency } from '@/lib/utils'
@@ -9,12 +10,26 @@ import { cn } from '@/lib/utils'
 import { MonthSelector } from '@/components/MonthSelector'
 import { useActions } from '@/lib/actions'
 
+type DrilldownTarget = {
+  type: 'category' | 'account'
+  id: number
+  name: string
+  icon: string
+  color: string
+}
+
+type CatEntry = { id: number; name: string; value: number; color: string; icon: string; count: number }
+type AccEntry = { id: number; name: string; value: number; color: string; icon: string; count: number }
+
 export default function DashboardPage() {
   const now = new Date()
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
+  const [drilldown, setDrilldown] = useState<DrilldownTarget | null>(null)
 
   const { openWorthIt } = useActions()
+
+  useEffect(() => { setDrilldown(null) }, [year, month])
 
   const transactions = useLiveQuery(
     () => {
@@ -26,6 +41,7 @@ export default function DashboardPage() {
   )
 
   const categories = useLiveQuery(() => db.categories.toArray(), [])
+  const accounts   = useLiveQuery(() => db.accounts.toArray(), [])
 
   const skippedThisMonth = useLiveQuery(
     () => {
@@ -48,22 +64,43 @@ export default function DashboardPage() {
     () => Object.fromEntries((categories ?? []).map(c => [c.id!, c])),
     [categories]
   )
+  const accountMap = useMemo(
+    () => Object.fromEntries((accounts ?? []).map(a => [a.id!, a])),
+    [accounts]
+  )
 
-  const { totalIncome, totalExpense, balance, categoryExpenses } = useMemo(() => {
+  const { totalIncome, totalExpense, balance, categoryExpenses, categoryIncomes, accountBreakdown } = useMemo(() => {
     const txs = transactions ?? []
     let totalIncome = 0, totalExpense = 0
-    const catAcc: Record<number, { name: string; value: number; color: string; icon: string }> = {}
+    const catExpAcc: Record<number, CatEntry> = {}
+    const catIncAcc: Record<number, CatEntry> = {}
+    const accAcc: Record<number, AccEntry> = {}
 
     txs.forEach(t => {
+      const cat = categoryMap[t.categoryId]
+      const acc = accountMap[t.accountId]
+
       if (t.type === 'income') {
         totalIncome += t.amount
+        if (cat) {
+          if (!catIncAcc[t.categoryId])
+            catIncAcc[t.categoryId] = { id: t.categoryId, name: cat.name, value: 0, color: cat.color, icon: cat.icon, count: 0 }
+          catIncAcc[t.categoryId].value += t.amount
+          catIncAcc[t.categoryId].count++
+        }
       } else if (t.type === 'expense') {
         totalExpense += t.amount
-        const cat = categoryMap[t.categoryId]
         if (cat) {
-          if (!catAcc[t.categoryId])
-            catAcc[t.categoryId] = { name: cat.name, value: 0, color: cat.color, icon: cat.icon }
-          catAcc[t.categoryId].value += t.amount
+          if (!catExpAcc[t.categoryId])
+            catExpAcc[t.categoryId] = { id: t.categoryId, name: cat.name, value: 0, color: cat.color, icon: cat.icon, count: 0 }
+          catExpAcc[t.categoryId].value += t.amount
+          catExpAcc[t.categoryId].count++
+        }
+        if (acc) {
+          if (!accAcc[t.accountId])
+            accAcc[t.accountId] = { id: t.accountId, name: acc.name, value: 0, color: acc.color, icon: acc.icon, count: 0 }
+          accAcc[t.accountId].value += t.amount
+          accAcc[t.accountId].count++
         }
       }
     })
@@ -72,13 +109,25 @@ export default function DashboardPage() {
       totalIncome,
       totalExpense,
       balance: totalIncome - totalExpense,
-      categoryExpenses: Object.values(catAcc).sort((a, b) => b.value - a.value),
+      categoryExpenses: Object.values(catExpAcc).sort((a, b) => b.value - a.value),
+      categoryIncomes:  Object.values(catIncAcc).sort((a, b) => b.value - a.value),
+      accountBreakdown: Object.values(accAcc).sort((a, b) => b.value - a.value),
     }
-  }, [transactions, categoryMap])
+  }, [transactions, categoryMap, accountMap])
+
+  const drilldownTxs = useMemo(() => {
+    if (!drilldown) return []
+    const sorted = (transactions ?? []).slice().sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+    if (drilldown.type === 'category') {
+      return sorted.filter(t => t.categoryId === drilldown.id)
+    }
+    return sorted.filter(t => t.accountId === drilldown.id || t.toAccountId === drilldown.id)
+  }, [drilldown, transactions])
 
   const loaded  = transactions !== undefined
   const hasData = (transactions?.length ?? 0) > 0
-  const topMax  = categoryExpenses[0]?.value ?? 1
   const maxBar  = Math.max(totalIncome, totalExpense, 1)
 
   return (
@@ -95,7 +144,7 @@ export default function DashboardPage() {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Net Balance</p>
           <p className={cn(
             'text-4xl font-bold tabular-nums mt-1',
-            balance > 0 ? 'text-foreground' : balance < 0 ? 'text-red-400' : 'text-foreground'
+            balance < 0 ? 'text-red-400' : 'text-foreground'
           )}>
             {formatCurrency(balance)}
           </p>
@@ -150,79 +199,50 @@ export default function DashboardPage() {
           </div>
           <div className="px-4 pt-2 pb-4">
             {categoryExpenses.length > 0 ? (
-              <>
-                {/* Donut with centre label */}
-                <div className="relative">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={categoryExpenses}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={70}
-                        outerRadius={96}
-                        paddingAngle={2}
-                        strokeWidth={0}
-                      >
-                        {categoryExpenses.map(entry => (
-                          <Cell key={entry.name} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null
-                          const { name, value } = payload[0] as { name: string; value: number }
-                          const pct = totalExpense > 0
-                            ? ((value / totalExpense) * 100).toFixed(1)
-                            : '0'
-                          return (
-                            <div className="rounded-xl border border-border/60 bg-card px-3 py-2 shadow-xl text-sm">
-                              <p className="font-semibold">{name}</p>
-                              <p className="text-muted-foreground">
-                                {formatCurrency(value)} · {pct}%
-                              </p>
-                            </div>
-                          )
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Centre text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Spent</p>
-                    <p className="text-xl font-bold tabular-nums leading-tight mt-0.5">
-                      {formatCurrency(totalExpense)}
-                    </p>
-                  </div>
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={categoryExpenses}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={96}
+                      paddingAngle={2}
+                      strokeWidth={0}
+                    >
+                      {categoryExpenses.map(entry => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        const { name, value } = payload[0] as { name: string; value: number }
+                        const pct = totalExpense > 0
+                          ? ((value / totalExpense) * 100).toFixed(1)
+                          : '0'
+                        return (
+                          <div className="rounded-xl border border-border/60 bg-card px-3 py-2 shadow-xl text-sm">
+                            <p className="font-semibold">{name}</p>
+                            <p className="text-muted-foreground">
+                              {formatCurrency(value)} · {pct}%
+                            </p>
+                          </div>
+                        )
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Spent</p>
+                  <p className="text-xl font-bold tabular-nums leading-tight mt-0.5">
+                    {formatCurrency(totalExpense)}
+                  </p>
                 </div>
-
-                {/* Legend */}
-                <div className="flex flex-col gap-2.5 mt-1">
-                  {categoryExpenses.slice(0, 5).map(cat => {
-                    const pct = Math.round((cat.value / totalExpense) * 100)
-                    return (
-                      <div key={cat.name} className="flex items-center gap-2.5">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ background: cat.color }}
-                        />
-                        <span className="flex-1 text-sm text-muted-foreground truncate">
-                          {cat.name}
-                        </span>
-                        <span className="text-xs text-muted-foreground tabular-nums w-8 text-right">
-                          {pct}%
-                        </span>
-                        <span className="text-sm font-semibold tabular-nums w-20 text-right">
-                          {formatCurrency(cat.value)}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
                 <TrendingDown className="h-10 w-10 opacity-20" />
@@ -268,43 +288,128 @@ export default function DashboardPage() {
           </button>
         )}
 
-        {/* ── Top 5 spending ── */}
+        {/* ── Expenses by Category ── */}
         {categoryExpenses.length > 0 && (
           <div className="mx-4 card-surface overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                Top Spending
+                Expenses by Category
               </p>
             </div>
-            <div className="px-4 pb-4 flex flex-col gap-4">
-              {categoryExpenses.slice(0, 5).map(cat => (
-                <div key={cat.name} className="flex items-center gap-3">
+            <div className="flex flex-col">
+              {categoryExpenses.map((cat, i) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setDrilldown({ type: 'category', id: cat.id, name: cat.name, icon: cat.icon, color: cat.color })}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3.5 text-left w-full active:bg-accent/50 transition-colors',
+                    i < categoryExpenses.length - 1 && 'border-b border-border/40'
+                  )}
+                >
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                    style={{ backgroundColor: cat.color + '25' }}
+                    style={{ backgroundColor: cat.color + '28' }}
                   >
                     {cat.icon}
                   </div>
-
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-sm font-medium truncate">{cat.name}</span>
-                      <span className="text-sm font-semibold tabular-nums ml-2 flex-shrink-0">
-                        {formatCurrency(cat.value)}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <p className="text-sm font-medium">{cat.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{cat.count} txn{cat.count !== 1 ? 's' : ''}</p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-red-400 mr-1">
+                    {formatCurrency(cat.value)}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Income by Category ── */}
+        {categoryIncomes.length > 0 && (
+          <div className="mx-4 card-surface overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                Income by Category
+              </p>
+            </div>
+            <div className="flex flex-col">
+              {categoryIncomes.map((cat, i) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setDrilldown({ type: 'category', id: cat.id, name: cat.name, icon: cat.icon, color: cat.color })}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3.5 text-left w-full active:bg-accent/50 transition-colors',
+                    i < categoryIncomes.length - 1 && 'border-b border-border/40'
+                  )}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                    style={{ backgroundColor: cat.color + '28' }}
+                  >
+                    {cat.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{cat.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{cat.count} txn{cat.count !== 1 ? 's' : ''}</p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-emerald-500 mr-1">
+                    {formatCurrency(cat.value)}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground/40 flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Payment Methods ── */}
+        {accountBreakdown.length > 0 && (
+          <div className="mx-4 card-surface overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                Payment Methods
+              </p>
+            </div>
+            <div className="flex flex-col">
+              {accountBreakdown.map((acc, i) => {
+                const pct = totalExpense > 0 ? (acc.value / totalExpense) * 100 : 0
+                return (
+                  <button
+                    key={acc.id}
+                    onClick={() => setDrilldown({ type: 'account', id: acc.id, name: acc.name, icon: acc.icon, color: acc.color })}
+                    className={cn(
+                      'flex flex-col gap-2.5 px-4 py-3.5 text-left w-full active:bg-accent/50 transition-colors',
+                      i < accountBreakdown.length - 1 && 'border-b border-border/40'
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
                       <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(cat.value / topMax) * 100}%`,
-                          backgroundColor: cat.color,
-                        }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                        style={{ backgroundColor: acc.color + '28' }}
+                      >
+                        {acc.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{acc.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{acc.count} txn{acc.count !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0 mr-1">
+                        <span className="text-sm font-semibold tabular-nums">{formatCurrency(acc.value)}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{pct.toFixed(1)}%</span>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground/40 flex-shrink-0" />
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden ml-12 mr-8">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: acc.color }}
                       />
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -350,6 +455,93 @@ export default function DashboardPage() {
           </p>
         )}
       </div>
+
+      {/* ── Drilldown overlay ── */}
+      {drilldown && (
+        <div className="fixed inset-0 z-[60] bg-background flex flex-col">
+          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur-xl border-b border-border/50 flex items-center gap-3 px-4 py-3">
+            <button
+              onClick={() => setDrilldown(null)}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-muted/60 active:bg-muted transition-colors flex-shrink-0"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+              style={{ backgroundColor: drilldown.color + '28' }}
+            >
+              {drilldown.icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold leading-tight">{drilldown.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {drilldownTxs.length} transaction{drilldownTxs.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto pb-8">
+            {drilldownTxs.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
+                <ReceiptText className="h-10 w-10 opacity-20" />
+                <p className="text-sm">No transactions</p>
+              </div>
+            ) : (
+              <div className="mx-4 mt-4 card-surface overflow-hidden">
+                {drilldownTxs.map((tx, i) => {
+                  const cat = categoryMap[tx.categoryId]
+                  const acc = accountMap[tx.accountId]
+                  const d   = new Date(tx.date)
+                  return (
+                    <div
+                      key={tx.id}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3.5',
+                        i < drilldownTxs.length - 1 && 'border-b border-border/40'
+                      )}
+                    >
+                      <div className="flex flex-col items-center justify-center w-8 flex-shrink-0 text-center">
+                        <span className="text-[9px] font-semibold text-muted-foreground uppercase leading-none">
+                          {format(d, 'MMM')}
+                        </span>
+                        <span className="text-base font-bold leading-tight tabular-nums">
+                          {format(d, 'd')}
+                        </span>
+                      </div>
+
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-lg flex-shrink-0"
+                        style={{ backgroundColor: (cat?.color ?? '#7C3AED') + '28' }}
+                      >
+                        {tx.type === 'transfer' ? '↔️' : (cat?.icon ?? '💸')}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.note || cat?.name || 'Transaction'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {acc?.name ?? ''}
+                        </p>
+                      </div>
+
+                      <span className={cn(
+                        'text-sm font-bold tabular-nums flex-shrink-0',
+                        tx.type === 'income'    ? 'text-emerald-500'
+                        : tx.type === 'expense' ? 'text-red-400'
+                        : 'text-violet-400'
+                      )}>
+                        {tx.type === 'income' ? '+' : tx.type === 'expense' ? '-' : ''}
+                        {formatCurrency(tx.amount)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
