@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, Trash2 } from 'lucide-react'
+import { X, Trash2, Calculator } from 'lucide-react'
 import { db, type Transaction, type TransactionType } from '@/lib/db'
 import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { NoteAutocomplete } from './NoteAutocomplete'
+import { CalculatorModal } from './CalculatorModal'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -52,6 +53,7 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
   const [note,        setNote]        = useState('')
   const [saving,      setSaving]      = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [calcOpen,    setCalcOpen]    = useState(false)
 
   const categories = useLiveQuery(() => db.categories.toArray(), [])
   const accounts   = useLiveQuery(() => db.accounts.toArray(), [])
@@ -226,7 +228,7 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
           </div>
 
           {/* Amount — large centered */}
-          <div className="flex items-center justify-center gap-1 py-4 rounded-2xl bg-muted/30">
+          <div className="relative flex items-center justify-center gap-1 py-4 rounded-2xl bg-muted/30">
             <span className={cn('text-3xl font-bold', TYPE_CONFIG[type].amount)}>₹</span>
             <input
               type="number"
@@ -243,7 +245,21 @@ export default function AddTransactionSheet({ open, onOpenChange, transaction, p
                 TYPE_CONFIG[type].amount
               )}
             />
+            <button
+              type="button"
+              onClick={() => setCalcOpen(true)}
+              className="absolute right-3 p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            >
+              <Calculator className="h-5 w-5" />
+            </button>
           </div>
+
+          <CalculatorModal
+            open={calcOpen}
+            onClose={() => setCalcOpen(false)}
+            onUse={v => { setAmount(v.toString()); setCalcOpen(false) }}
+            initialValue={amount}
+          />
 
           {/* Category grid */}
           {type !== 'transfer' && (
