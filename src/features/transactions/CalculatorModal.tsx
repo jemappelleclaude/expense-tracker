@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -70,28 +70,19 @@ interface Props {
 }
 
 export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
-  const [mounted, setMounted] = useState(false)
-  const [visible, setVisible] = useState(false)
   const [expression, setExpression] = useState('')
   const [current, setCurrent] = useState('')
   const [justEvaled, setJustEvaled] = useState(false)
   const [evalExpr, setEvalExpr] = useState('')
 
+  // Reset state each time the modal opens
   useEffect(() => {
-    if (open) {
-      setMounted(true)
-      const id = requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)))
-      const n = parseFloat(initialValue ?? '')
-      setExpression('')
-      setCurrent(!isNaN(n) && n > 0 ? n.toString() : '')
-      setJustEvaled(false)
-      setEvalExpr('')
-      return () => cancelAnimationFrame(id)
-    } else {
-      setVisible(false)
-      const t = setTimeout(() => setMounted(false), 300)
-      return () => clearTimeout(t)
-    }
+    if (!open) return
+    const n = parseFloat(initialValue ?? '')
+    setExpression('')
+    setCurrent(!isNaN(n) && n > 0 ? n.toString() : '')
+    setJustEvaled(false)
+    setEvalExpr('')
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const fullExpr = expression + current
@@ -111,14 +102,12 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
   const hasExpr = expression.length > 0
   const largeDisplay = error
     ? error
-    : (result !== null && hasExpr)
+    : result !== null && hasExpr
       ? result.toLocaleString('en-IN', { maximumFractionDigits: 2 })
       : current || '0'
 
   const exprLine = justEvaled ? evalExpr : expression.trimEnd()
-
   const finalValue = error ? null : result
-
   const canUse = finalValue !== null && finalValue > 0
 
   function digit(d: string) {
@@ -205,135 +194,149 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
     ? `Use ₹${finalValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
     : 'Enter an amount'
 
-  if (!mounted) return null
-
   const opActive = (op: string) =>
     expression.endsWith(op + ' ') && !current && !justEvaled
 
-  const numBtn = 'flex items-center justify-center font-semibold text-lg rounded-2xl bg-muted/80 text-foreground active:scale-95 transition-transform select-none'
-  const opBtn = (op: string) => cn(
-    'flex items-center justify-center font-semibold text-xl rounded-2xl active:scale-95 transition-transform select-none',
-    opActive(op)
-      ? 'bg-violet-500 text-white'
-      : 'bg-violet-500/20 text-violet-400'
-  )
+  const numBtn =
+    'flex items-center justify-center font-semibold text-lg rounded-2xl bg-muted/80 text-foreground active:scale-95 transition-transform select-none touch-manipulation'
+  const opBtn = (op: string) =>
+    cn(
+      'flex items-center justify-center font-semibold text-xl rounded-2xl active:scale-95 transition-transform select-none touch-manipulation',
+      opActive(op) ? 'bg-violet-500 text-white' : 'bg-violet-500/20 text-violet-400',
+    )
 
-  return createPortal(
-    <div className="fixed inset-0 z-[200] flex flex-col justify-end">
-      <div
-        className={cn('absolute inset-0 bg-black/50 transition-opacity duration-300', visible ? 'opacity-100' : 'opacity-0')}
-        onClick={onClose}
-      />
-      <div className={cn(
-        'relative z-10 w-full max-w-[430px] mx-auto',
-        'bg-card border-t border-border/40 rounded-t-3xl pt-2',
-        'transition-transform duration-300 ease-out',
-        visible ? 'translate-y-0' : 'translate-y-full',
-      )}>
-        {/* Drag handle */}
-        <div className="flex justify-center pb-1">
-          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-sm font-semibold">Calculator</span>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 hover:bg-accent text-muted-foreground transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Display */}
-        <div className="px-5 pb-3 flex flex-col items-end gap-0.5 min-h-[68px] justify-end">
-          <div className="text-xs text-muted-foreground font-mono truncate w-full text-right h-4 leading-4">
-            {exprLine}
-          </div>
-          <div className={cn(
-            'font-mono font-bold text-right w-full truncate leading-tight',
-            error ? 'text-sm text-red-400' : 'text-3xl text-foreground',
-          )}>
-            {largeDisplay}
-          </div>
-        </div>
-
-        {/* Numpad */}
-        <div
-          className="px-3"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gridTemplateRows: 'repeat(5, 48px)',
-            gap: '8px',
-          }}
+  return (
+    // Nested DialogPrimitive.Root registers this in Radix's DismissableLayer stack,
+    // which prevents the outer Sheet's react-remove-scroll from blocking touch events here.
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className={cn(
+            'fixed inset-0 z-[100] bg-black/50',
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0',
+            'data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
+            'duration-300',
+          )}
+        />
+        <DialogPrimitive.Content
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          className={cn(
+            'fixed bottom-0 left-1/2 -translate-x-1/2 z-[101]',
+            'w-full max-w-[430px]',
+            'bg-card border-t border-border/40 rounded-t-3xl pt-2',
+            'data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-full',
+            'data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-full',
+            'duration-300 focus:outline-none',
+          )}
         >
-          {/* Row 1 */}
-          <button onClick={clear} className="flex items-center justify-center font-semibold text-lg rounded-2xl bg-red-500/20 text-red-400 active:scale-95 transition-transform select-none">
-            C
-          </button>
-          <button onClick={backspace} className="flex items-center justify-center font-semibold text-xl rounded-2xl bg-muted/80 text-muted-foreground active:scale-95 transition-transform select-none">
-            ⌫
-          </button>
-          <button onClick={() => operator('÷')} className={opBtn('÷')}>÷</button>
-          <button onClick={() => operator('×')} className={opBtn('×')}>×</button>
+          <DialogPrimitive.Title className="sr-only">Calculator</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">
+            Enter a calculation to set the transaction amount
+          </DialogPrimitive.Description>
 
-          {/* Row 2 */}
-          <button onClick={() => digit('7')} className={numBtn}>7</button>
-          <button onClick={() => digit('8')} className={numBtn}>8</button>
-          <button onClick={() => digit('9')} className={numBtn}>9</button>
-          <button onClick={() => operator('-')} className={opBtn('-')}>−</button>
+          {/* Drag handle */}
+          <div className="flex justify-center pb-1">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
 
-          {/* Row 3 */}
-          <button onClick={() => digit('4')} className={numBtn}>4</button>
-          <button onClick={() => digit('5')} className={numBtn}>5</button>
-          <button onClick={() => digit('6')} className={numBtn}>6</button>
-          <button onClick={() => operator('+')} className={opBtn('+')}>+</button>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2">
+            <span className="text-sm font-semibold">Calculator</span>
+            <DialogPrimitive.Close className="rounded-full p-1.5 hover:bg-accent text-muted-foreground transition-colors touch-manipulation">
+              <X className="h-4 w-4" />
+            </DialogPrimitive.Close>
+          </div>
 
-          {/* Row 4 */}
-          <button onClick={() => digit('1')} className={numBtn}>1</button>
-          <button onClick={() => digit('2')} className={numBtn}>2</button>
-          <button onClick={() => digit('3')} className={numBtn}>3</button>
+          {/* Display */}
+          <div className="px-5 pb-3 flex flex-col items-end gap-0.5 min-h-[68px] justify-end">
+            <div className="text-xs text-muted-foreground font-mono truncate w-full text-right h-4 leading-4">
+              {exprLine}
+            </div>
+            <div
+              className={cn(
+                'font-mono font-bold text-right w-full truncate leading-tight',
+                error ? 'text-sm text-red-400' : 'text-3xl text-foreground',
+              )}
+            >
+              {largeDisplay}
+            </div>
+          </div>
 
-          {/* = spans rows 4–5, col 4 */}
-          <button
-            onClick={equal}
-            style={{ gridRow: '4 / 6', gridColumn: '4' }}
-            className="flex items-center justify-center font-bold text-2xl rounded-2xl bg-violet-500 text-white active:scale-95 transition-transform select-none"
+          {/* Numpad */}
+          <div
+            className="px-3"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateRows: 'repeat(5, 48px)',
+              gap: '8px',
+            }}
           >
-            =
-          </button>
+            {/* Row 1 */}
+            <button onClick={clear} className="flex items-center justify-center font-semibold text-lg rounded-2xl bg-red-500/20 text-red-400 active:scale-95 transition-transform select-none touch-manipulation">
+              C
+            </button>
+            <button onClick={backspace} className="flex items-center justify-center font-semibold text-xl rounded-2xl bg-muted/80 text-muted-foreground active:scale-95 transition-transform select-none touch-manipulation">
+              ⌫
+            </button>
+            <button onClick={() => operator('÷')} className={opBtn('÷')}>÷</button>
+            <button onClick={() => operator('×')} className={opBtn('×')}>×</button>
 
-          {/* Row 5 */}
-          <button
-            onClick={() => digit('0')}
-            style={{ gridColumn: '1 / 3' }}
-            className={numBtn}
-          >
-            0
-          </button>
-          <button onClick={() => digit('.')} className={numBtn}>.</button>
-          {/* col 4 occupied by = */}
-        </div>
+            {/* Row 2 */}
+            <button onClick={() => digit('7')} className={numBtn}>7</button>
+            <button onClick={() => digit('8')} className={numBtn}>8</button>
+            <button onClick={() => digit('9')} className={numBtn}>9</button>
+            <button onClick={() => operator('-')} className={opBtn('-')}>−</button>
 
-        {/* Use button */}
-        <div className="px-3 pt-3 pb-6">
-          <button
-            onClick={() => { if (canUse && finalValue) onUse(finalValue) }}
-            disabled={!canUse}
-            className={cn(
-              'w-full h-12 rounded-2xl font-semibold text-base transition-all',
-              canUse
-                ? 'gradient-primary text-white shadow-lg shadow-violet-500/30 active:scale-[0.98]'
-                : 'bg-muted text-muted-foreground cursor-not-allowed',
-            )}
-          >
-            {useLabel}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+            {/* Row 3 */}
+            <button onClick={() => digit('4')} className={numBtn}>4</button>
+            <button onClick={() => digit('5')} className={numBtn}>5</button>
+            <button onClick={() => digit('6')} className={numBtn}>6</button>
+            <button onClick={() => operator('+')} className={opBtn('+')}>+</button>
+
+            {/* Row 4 */}
+            <button onClick={() => digit('1')} className={numBtn}>1</button>
+            <button onClick={() => digit('2')} className={numBtn}>2</button>
+            <button onClick={() => digit('3')} className={numBtn}>3</button>
+
+            {/* = spans rows 4–5, col 4 */}
+            <button
+              onClick={equal}
+              style={{ gridRow: '4 / 6', gridColumn: '4' }}
+              className="flex items-center justify-center font-bold text-2xl rounded-2xl bg-violet-500 text-white active:scale-95 transition-transform select-none touch-manipulation"
+            >
+              =
+            </button>
+
+            {/* Row 5 */}
+            <button
+              onClick={() => digit('0')}
+              style={{ gridColumn: '1 / 3' }}
+              className={numBtn}
+            >
+              0
+            </button>
+            <button onClick={() => digit('.')} className={numBtn}>.</button>
+            {/* col 4 occupied by = */}
+          </div>
+
+          {/* Use button */}
+          <div className="px-3 pt-3 pb-6">
+            <button
+              onClick={() => { if (canUse && finalValue) onUse(finalValue) }}
+              disabled={!canUse}
+              className={cn(
+                'w-full h-12 rounded-2xl font-semibold text-base transition-all touch-manipulation',
+                canUse
+                  ? 'gradient-primary text-white shadow-lg shadow-violet-500/30 active:scale-[0.98]'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed',
+              )}
+            >
+              {useLabel}
+            </button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
