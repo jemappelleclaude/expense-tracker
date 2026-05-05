@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -85,6 +85,13 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
     setEvalExpr('')
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Keep the expression line scrolled to show the latest (rightmost) input
+  const exprRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = exprRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [expression, current, justEvaled, evalExpr])
+
   const fullExpr = expression + current
   const raw = safeEval(fullExpr)
 
@@ -106,7 +113,7 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
       ? result.toLocaleString('en-IN', { maximumFractionDigits: 2 })
       : current || '0'
 
-  const exprLine = justEvaled ? evalExpr : expression.trimEnd()
+  const exprLine = justEvaled ? evalExpr : (expression + current).trimEnd()
   const finalValue = error ? null : result
   const canUse = finalValue !== null && finalValue > 0
 
@@ -207,7 +214,7 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
 
   return (
     // Nested DialogPrimitive.Root registers this in Radix's DismissableLayer stack,
-    // which prevents the outer Sheet's react-remove-scroll from blocking touch events here.
+    // preventing the outer Sheet's react-remove-scroll from blocking touch events here.
     <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
@@ -248,14 +255,21 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
           </div>
 
           {/* Display */}
-          <div className="px-5 pb-3 flex flex-col items-end gap-0.5 min-h-[68px] justify-end">
-            <div className="text-xs text-muted-foreground font-mono truncate w-full text-right h-4 leading-4">
-              {exprLine}
+          <div className="px-5 pb-3 flex flex-col gap-1">
+            {/* Expression line: full width, scrolls horizontally, no truncation.
+                scrollLeft is kept at max so the latest character is always visible. */}
+            <div
+              ref={exprRef}
+              className="w-full overflow-x-auto whitespace-nowrap text-xs text-muted-foreground font-mono text-right leading-5 h-5"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {exprLine || ' '}
             </div>
+            {/* Result / current value */}
             <div
               className={cn(
-                'font-mono font-bold text-right w-full truncate leading-tight',
-                error ? 'text-sm text-red-400' : 'text-3xl text-foreground',
+                'w-full whitespace-nowrap overflow-hidden font-mono font-bold text-right leading-tight',
+                error ? 'text-base text-red-400' : 'text-3xl text-foreground',
               )}
             >
               {largeDisplay}
@@ -277,16 +291,16 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
               C
             </button>
             <button onClick={backspace} className="flex items-center justify-center font-semibold text-xl rounded-2xl bg-muted/80 text-muted-foreground active:scale-95 transition-transform select-none touch-manipulation">
-              ⌫
+              {'⌫'}
             </button>
-            <button onClick={() => operator('÷')} className={opBtn('÷')}>÷</button>
-            <button onClick={() => operator('×')} className={opBtn('×')}>×</button>
+            <button onClick={() => operator('÷')} className={opBtn('÷')}>{'÷'}</button>
+            <button onClick={() => operator('×')} className={opBtn('×')}>{'×'}</button>
 
             {/* Row 2 */}
             <button onClick={() => digit('7')} className={numBtn}>7</button>
             <button onClick={() => digit('8')} className={numBtn}>8</button>
             <button onClick={() => digit('9')} className={numBtn}>9</button>
-            <button onClick={() => operator('-')} className={opBtn('-')}>−</button>
+            <button onClick={() => operator('-')} className={opBtn('-')}>{'−'}</button>
 
             {/* Row 3 */}
             <button onClick={() => digit('4')} className={numBtn}>4</button>
@@ -299,7 +313,7 @@ export function CalculatorModal({ open, onClose, onUse, initialValue }: Props) {
             <button onClick={() => digit('2')} className={numBtn}>2</button>
             <button onClick={() => digit('3')} className={numBtn}>3</button>
 
-            {/* = spans rows 4–5, col 4 */}
+            {/* = spans rows 4-5, col 4 */}
             <button
               onClick={equal}
               style={{ gridRow: '4 / 6', gridColumn: '4' }}
